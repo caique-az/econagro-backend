@@ -20,7 +20,10 @@ class App {
     this.app.disable('x-powered-by');
 
     // Middlewares essenciais
-    this.app.use(cors());
+    const allowedOrigins = process.env.ALLOWED_ORIGINS
+      ? process.env.ALLOWED_ORIGINS.split(',')
+      : ['http://localhost:3000'];
+    this.app.use(cors({ origin: allowedOrigins }));
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
 
