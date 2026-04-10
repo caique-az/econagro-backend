@@ -1,8 +1,9 @@
 const Category = require('./category');
 const Product = require('./product');
+const User = require('./user');
 
-// Exportar modelos
 module.exports = {
   Category,
   Product,
+  User,
 };
