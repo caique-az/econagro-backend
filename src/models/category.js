@@ -36,6 +36,4 @@ categorySchema.virtual('products', {
   foreignField: 'category',
 });
 
-categorySchema.index({ name: 1 });
-
 module.exports = mongoose.model('Category', categorySchema);
