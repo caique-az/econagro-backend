@@ -14,7 +14,7 @@ const validate = (req, res, next) => {
       value: error.value,
     }));
 
-    throw new ValidationError('Erro de validação', errorMessages);
+    return next(new ValidationError('Erro de validação', errorMessages));
   }
 
   next();
