@@ -11,7 +11,6 @@ API RESTful para o sistema EconAgro - plataforma de gerenciamento de produtos ag
 ## Instalação
 
 ```bash
-cd backend
 npm install
 cp .env.example .env  # Configure MONGODB_URI
 npm run dev
