@@ -9,6 +9,15 @@ const errorHandler = (err, req, res, next) => {
     message: err.message || 'Erro interno do servidor',
   };
 
+  // Handle custom API errors first (before Mongoose checks, pois ValidationError é nome compartilhado)
+  if (err.isOperational) {
+    return res.status(err.statusCode).json({
+      success: false,
+      message: err.message,
+      ...(err.errors && { errors: err.errors }),
+    });
+  }
+
   // Handle Mongoose validation errors
   if (err.name === 'ValidationError') {
     response.message = 'Erro de validação';
@@ -27,37 +36,12 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Handle not found errors (custom)
-  if (err.name === 'NotFoundError') {
-    return res.status(StatusCodes.NOT_FOUND).json({
-      success: false,
-      message: err.message || 'Recurso não encontrado',
-    });
-  }
-
-  // Handle bad request errors (custom)
-  if (err.name === 'BadRequestError') {
-    return res.status(StatusCodes.BAD_REQUEST).json({
-      success: false,
-      message: err.message || 'Requisição inválida',
-    });
-  }
-
   // Handle MongoDB duplicate key errors
   if (err.code === 11000) {
     const field = Object.keys(err.keyValue)[0];
     return res.status(StatusCodes.CONFLICT).json({
       success: false,
       message: `Já existe um registro com este ${field}`,
-    });
-  }
-
-  // Handle custom API errors with statusCode
-  if (err.statusCode) {
-    return res.status(err.statusCode).json({
-      success: false,
-      message: err.message,
-      ...(err.errors && { errors: err.errors }),
     });
   }
 
