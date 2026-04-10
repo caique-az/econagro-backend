@@ -100,10 +100,6 @@ class ProductController {
     try {
       const { id } = req.params;
 
-      if (!mongoose.Types.ObjectId.isValid(id)) {
-        throw new BadRequestError('ID inválido');
-      }
-
       const product = await Product.findById(id).populate('category', 'name description');
 
       if (!product) {
@@ -218,10 +214,6 @@ class ProductController {
       const { id } = req.params;
       const { name, description, price, quantity, category, image, active } = req.body;
 
-      if (!mongoose.Types.ObjectId.isValid(id)) {
-        throw new BadRequestError('ID inválido');
-      }
-
       // Verifica se categoria existe (se fornecida)
       if (category) {
         if (!mongoose.Types.ObjectId.isValid(category)) {
@@ -278,10 +270,6 @@ class ProductController {
   async delete(req, res, next) {
     try {
       const { id } = req.params;
-
-      if (!mongoose.Types.ObjectId.isValid(id)) {
-        throw new BadRequestError('ID inválido');
-      }
 
       const product = await Product.findByIdAndDelete(id);
 
