@@ -324,9 +324,10 @@ class ProductController {
     try {
       const { categoryName } = req.params;
 
-      // Busca categoria pelo nome (case-insensitive)
-      const category = await Category.findOne({
-        name: { $regex: new RegExp(`^${categoryName}$`, 'i') },
+      // Busca categoria pelo nome (case-insensitive via collation, evita ReDoS)
+      const category = await Category.findOne({ name: categoryName }).collation({
+        locale: 'pt',
+        strength: 2,
       });
 
       if (!category) {
