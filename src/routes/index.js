@@ -1,16 +1,16 @@
 const express = require('express');
 
 const router = express.Router();
+const authRoutes = require('./auth.routes');
+const userRoutes = require('./user.routes');
 const productRoutes = require('./product.routes');
 const categoryRoutes = require('./category.routes');
 
-// Rotas de produtos
+router.use('/auth', authRoutes);
+router.use('/users', userRoutes);
 router.use('/products', productRoutes);
-
-// Rotas de categorias
 router.use('/categories', categoryRoutes);
 
-// Rota de saúde da API
 router.get('/health', (req, res) => {
   res.status(200).json({ status: 'API está funcionando' });
 });
