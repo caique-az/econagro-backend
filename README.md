@@ -22,6 +22,7 @@ npm run dev
 PORT=3001
 NODE_ENV=development
 MONGODB_URI=mongodb+srv://<user>:<pass>@cluster.mongodb.net/econagro
+ALLOWED_ORIGINS=http://localhost:3000
 ```
 
 ## Endpoints
@@ -57,14 +58,13 @@ MONGODB_URI=mongodb+srv://<user>:<pass>@cluster.mongodb.net/econagro
 ## Estrutura
 
 ```
-backend/src/
+src/
 ├── config/        # Conexão MongoDB
 ├── controllers/   # Lógica de negócio
 ├── middlewares/   # Error handler, validação ObjectId
 ├── models/        # Schemas Mongoose
 ├── routes/        # Definição de rotas
 ├── utils/         # Classes de erro customizadas
-├── validators/    # Regras de validação
 ├── app.js         # Configuração Express
 └── server.js      # Entry point
 ```
