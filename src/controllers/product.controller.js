@@ -212,9 +212,8 @@ class ProductController {
   async update(req, res, next) {
     try {
       const { id } = req.params;
-      const { name, description, price, quantity, category, image, active } = req.body;
-
       // Verifica se categoria existe (se fornecida)
+      const { category } = req.body;
       if (category) {
         if (!mongoose.Types.ObjectId.isValid(category)) {
           throw new BadRequestError('ID da categoria inválido');
@@ -225,9 +224,17 @@ class ProductController {
         }
       }
 
+      const allowedFields = ['name', 'description', 'price', 'quantity', 'category', 'image', 'active'];
+      const updates = {};
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) {
+          updates[field] = req.body[field];
+        }
+      }
+
       const product = await Product.findByIdAndUpdate(
         id,
-        { name, description, price, quantity, category, image, active },
+        updates,
         { new: true, runValidators: true }
       ).populate('category', 'name description');
 
