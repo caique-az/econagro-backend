@@ -2,8 +2,15 @@ const request = require('supertest');
 const mongoose = require('mongoose');
 const app = require('../../src/app');
 const Category = require('../../src/models/category');
+const { createAdminAndGetToken } = require('../helpers/auth');
 
 describe('Category Routes', () => {
+  let token;
+
+  beforeEach(async () => {
+    ({ token } = await createAdminAndGetToken());
+  });
+
   describe('GET /api/categories', () => {
     it('deve retornar lista vazia quando não há categorias', async () => {
       const res = await request(app).get('/api/categories');
@@ -79,6 +86,7 @@ describe('Category Routes', () => {
     it('deve criar uma nova categoria', async () => {
       const res = await request(app)
         .post('/api/categories')
+        .set('Authorization', `Bearer ${token}`)
         .send({ name: 'Frutas', description: 'Frutas frescas' });
 
       expect(res.status).toBe(201);
@@ -94,6 +102,7 @@ describe('Category Routes', () => {
 
       const res = await request(app)
         .post('/api/categories')
+        .set('Authorization', `Bearer ${token}`)
         .send({ name: 'Frutas' });
 
       expect(res.status).toBe(400);
@@ -103,6 +112,7 @@ describe('Category Routes', () => {
     it('deve retornar erro sem nome', async () => {
       const res = await request(app)
         .post('/api/categories')
+        .set('Authorization', `Bearer ${token}`)
         .send({ description: 'Sem nome' });
 
       expect([400, 422]).toContain(res.status);
@@ -116,6 +126,7 @@ describe('Category Routes', () => {
 
       const res = await request(app)
         .put(`/api/categories/${category._id}`)
+        .set('Authorization', `Bearer ${token}`)
         .send({ name: 'Frutas Tropicais', description: 'Atualizado' });
 
       expect(res.status).toBe(200);
@@ -129,6 +140,7 @@ describe('Category Routes', () => {
 
       const res = await request(app)
         .put(`/api/categories/${fakeId}`)
+        .set('Authorization', `Bearer ${token}`)
         .send({ name: 'Teste' });
 
       expect(res.status).toBe(404);
@@ -140,6 +152,7 @@ describe('Category Routes', () => {
 
       const res = await request(app)
         .put(`/api/categories/${category._id}`)
+        .set('Authorization', `Bearer ${token}`)
         .send({ name: 'Frutas' });
 
       expect(res.status).toBe(400);
@@ -150,7 +163,9 @@ describe('Category Routes', () => {
     it('deve deletar uma categoria', async () => {
       const category = await Category.create({ name: 'Frutas' });
 
-      const res = await request(app).delete(`/api/categories/${category._id}`);
+      const res = await request(app)
+        .delete(`/api/categories/${category._id}`)
+        .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(204);
 
@@ -161,7 +176,9 @@ describe('Category Routes', () => {
     it('deve retornar 404 para ID inexistente', async () => {
       const fakeId = new mongoose.Types.ObjectId();
 
-      const res = await request(app).delete(`/api/categories/${fakeId}`);
+      const res = await request(app)
+        .delete(`/api/categories/${fakeId}`)
+        .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(404);
     });

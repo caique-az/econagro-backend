@@ -3,11 +3,14 @@ const mongoose = require('mongoose');
 const app = require('../../src/app');
 const Product = require('../../src/models/product');
 const Category = require('../../src/models/category');
+const { createAdminAndGetToken } = require('../helpers/auth');
 
 describe('Product Routes', () => {
   let category;
+  let token;
 
   beforeEach(async () => {
+    ({ token } = await createAdminAndGetToken());
     category = await Category.create({
       name: 'Frutas',
       description: 'Frutas frescas',
@@ -168,7 +171,10 @@ describe('Product Routes', () => {
         category: category._id.toString(),
       };
 
-      const res = await request(app).post('/api/products').send(productData);
+      const res = await request(app)
+        .post('/api/products')
+        .set('Authorization', `Bearer ${token}`)
+        .send(productData);
 
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
@@ -177,7 +183,10 @@ describe('Product Routes', () => {
     });
 
     it('deve retornar erro sem campos obrigatórios', async () => {
-      const res = await request(app).post('/api/products').send({ name: 'Teste' });
+      const res = await request(app)
+        .post('/api/products')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: 'Teste' });
 
       expect([400, 422]).toContain(res.status);
       expect(res.body.success).toBe(false);
@@ -186,23 +195,29 @@ describe('Product Routes', () => {
     it('deve retornar erro para categoria inexistente', async () => {
       const fakeId = new mongoose.Types.ObjectId();
 
-      const res = await request(app).post('/api/products').send({
-        name: 'Teste',
-        price: 10,
-        quantity: 5,
-        category: fakeId.toString(),
-      });
+      const res = await request(app)
+        .post('/api/products')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          name: 'Teste',
+          price: 10,
+          quantity: 5,
+          category: fakeId.toString(),
+        });
 
       expect(res.status).toBe(404);
     });
 
     it('deve retornar erro para categoria com ID inválido', async () => {
-      const res = await request(app).post('/api/products').send({
-        name: 'Teste',
-        price: 10,
-        quantity: 5,
-        category: 'invalid-id',
-      });
+      const res = await request(app)
+        .post('/api/products')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          name: 'Teste',
+          price: 10,
+          quantity: 5,
+          category: 'invalid-id',
+        });
 
       expect(res.status).toBe(400);
     });
@@ -219,6 +234,7 @@ describe('Product Routes', () => {
 
       const res = await request(app)
         .put(`/api/products/${product._id}`)
+        .set('Authorization', `Bearer ${token}`)
         .send({ name: 'Banana Premium', price: 7.99 });
 
       expect(res.status).toBe(200);
@@ -231,6 +247,7 @@ describe('Product Routes', () => {
 
       const res = await request(app)
         .put(`/api/products/${fakeId}`)
+        .set('Authorization', `Bearer ${token}`)
         .send({ name: 'Teste' });
 
       expect(res.status).toBe(404);
@@ -247,6 +264,7 @@ describe('Product Routes', () => {
 
       const res = await request(app)
         .put(`/api/products/${product._id}`)
+        .set('Authorization', `Bearer ${token}`)
         .send({ category: newCategory._id.toString() });
 
       expect(res.status).toBe(200);
@@ -263,7 +281,9 @@ describe('Product Routes', () => {
         category: category._id,
       });
 
-      const res = await request(app).delete(`/api/products/${product._id}`);
+      const res = await request(app)
+        .delete(`/api/products/${product._id}`)
+        .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(204);
 
@@ -274,7 +294,9 @@ describe('Product Routes', () => {
     it('deve retornar 404 para ID inexistente', async () => {
       const fakeId = new mongoose.Types.ObjectId();
 
-      const res = await request(app).delete(`/api/products/${fakeId}`);
+      const res = await request(app)
+        .delete(`/api/products/${fakeId}`)
+        .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(404);
     });
