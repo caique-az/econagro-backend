@@ -4,6 +4,7 @@ const { StatusCodes } = require('http-status-codes');
 class ApiError extends Error {
   constructor(message, statusCode = StatusCodes.INTERNAL_SERVER_ERROR) {
     super(message);
+    this.name = this.constructor.name;
     this.statusCode = statusCode;
     this.status = `${statusCode}`.startsWith('4') ? 'fail' : 'error';
     this.isOperational = true;
