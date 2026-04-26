@@ -14,8 +14,6 @@ class App {
   }
 
   middlewares() {
-    this.app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
-
     // Configurações de segurança básicas
     this.app.disable('x-powered-by');
 

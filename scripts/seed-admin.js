@@ -33,4 +33,7 @@ run()
     console.error(err.message);
     process.exit(1);
   })
-  .finally(() => mongoose.disconnect());
+  .finally(() => {
+    mongoose.disconnect();
+    process.exit(0);
+  });

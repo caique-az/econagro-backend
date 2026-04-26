@@ -15,7 +15,9 @@ class ProductController {
       }
 
       if (active !== undefined) {
-        filter.active = active === 'true';
+        filter.active = active === "true";
+      } else {
+        filter.active = true;
       }
 
       if (search) {
