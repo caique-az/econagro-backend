@@ -21,8 +21,10 @@ class App {
 
     // Middlewares essenciais
     const allowedOrigins = process.env.ALLOWED_ORIGINS
-      ? process.env.ALLOWED_ORIGINS.split(',')
-      : ['http://localhost:3000'];
+      ? process.env.ALLOWED_ORIGINS.split(",")
+          .map((origin) => origin.trim())
+          .filter(Boolean)
+      : ["http://localhost:3000"];
     this.app.use(cors({ origin: allowedOrigins }));
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
