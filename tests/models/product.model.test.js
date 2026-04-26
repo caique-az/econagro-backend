@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+require('mongoose');
 const Product = require('../../src/models/product');
 const Category = require('../../src/models/category');
 
@@ -29,7 +29,7 @@ describe('Product Model', () => {
       expect(product.quantity).toBe(productData.quantity);
       expect(product.category.toString()).toBe(category._id.toString());
       expect(product.active).toBe(true);
-      expect(product.image).toBe('default-product.jpg');
+      expect(product.image).toBe('https://placehold.co/300x200?text=Sem+imagem');
     });
 
     it('deve falhar sem nome', async () => {
@@ -126,8 +126,7 @@ describe('Product Model', () => {
         quantity: 50,
         category: category._id,
       });
-
-      const populated = await Product.findById(product._id).populate('category');
+      await Product.findById(product._id).populate('category');
     });
   });
 });
