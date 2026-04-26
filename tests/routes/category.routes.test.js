@@ -55,7 +55,6 @@ describe('Category Routes', () => {
     it('deve retornar uma categoria por ID', async () => {
       const category = await Category.create({
         name: 'Frutas',
-        description: 'Frutas frescas',
       });
 
       const res = await request(app).get(`/api/categories/${category._id}`);
@@ -87,7 +86,7 @@ describe('Category Routes', () => {
       const res = await request(app)
         .post('/api/categories')
         .set('Authorization', `Bearer ${token}`)
-        .send({ name: 'Frutas', description: 'Frutas frescas' });
+        .send({ name: 'Frutas' });
 
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
@@ -113,7 +112,7 @@ describe('Category Routes', () => {
       const res = await request(app)
         .post('/api/categories')
         .set('Authorization', `Bearer ${token}`)
-        .send({ description: 'Sem nome' });
+        .send({ });
 
       expect([400, 422]).toContain(res.status);
       expect(res.body.success).toBe(false);
@@ -127,12 +126,11 @@ describe('Category Routes', () => {
       const res = await request(app)
         .put(`/api/categories/${category._id}`)
         .set('Authorization', `Bearer ${token}`)
-        .send({ name: 'Frutas Tropicais', description: 'Atualizado' });
+        .send({ name: 'Frutas Tropicais' });
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.data.name).toBe('Frutas Tropicais');
-      expect(res.body.data.description).toBe('Atualizado');
     });
 
     it('deve retornar 404 para ID inexistente', async () => {

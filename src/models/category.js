@@ -8,20 +8,7 @@ const categorySchema = new mongoose.Schema(
       trim: true,
       unique: true,
       maxlength: [50, 'O nome não pode ter mais de 50 caracteres'],
-    },
-    description: {
-      type: String,
-      trim: true,
-      maxlength: [200, 'A descrição não pode ter mais de 200 caracteres'],
-    },
-    image: {
-      type: String,
-      default: 'default-category.jpg',
-    },
-    active: {
-      type: Boolean,
-      default: true,
-    },
+    }
   },
   {
     timestamps: true,

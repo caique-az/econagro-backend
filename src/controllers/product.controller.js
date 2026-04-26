@@ -3,42 +3,8 @@ const mongoose = require('mongoose');
 const { Product, Category } = require('../models');
 const { NotFoundError, BadRequestError, ValidationError } = require('../utils/errors');
 
-/**
- * @swagger
- * tags:
- *   name: Produtos
- *   description: Gerenciamento de produtos
- */
 class ProductController {
-  /**
-   * @swagger
-   * /products:
-   *   get:
-   *     summary: Lista todos os produtos
-   *     tags: [Produtos]
-   *     parameters:
-   *       - in: query
-   *         name: category
-   *         schema:
-   *           type: string
-   *         description: Categoria do produto
-   *     responses:
-   *       200:
-   *         description: Lista de produtos
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 success:
-   *                   type: boolean
-   *                 count:
-   *                   type: integer
-   *                 data:
-   *                   type: array
-   *                   items:
-   *                     $ref: '#/components/schemas/Product'
-   */
+
   async getAll(req, res, next) {
     try {
       const { category, search, active } = req.query;
@@ -60,7 +26,7 @@ class ProductController {
       }
 
       const products = await Product.find(filter)
-        .populate('category', 'name description')
+        .populate('category', 'name')
         .sort({ createdAt: -1 });
 
       res.status(StatusCodes.OK).json({
@@ -73,34 +39,11 @@ class ProductController {
     }
   }
 
-  /**
-   * @swagger
-   * /products/{id}:
-   *   get:
-   *     summary: Obtém um produto pelo ID
-   *     tags: [Produtos]
-   *     parameters:
-   *       - in: path
-   *         name: id
-   *         required: true
-   *         schema:
-   *           type: integer
-   *         description: ID do produto
-   *     responses:
-   *       200:
-   *         description: Dados do produto
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/Product'
-   *       404:
-   *         description: Produto não encontrado
-   */
   async getById(req, res, next) {
     try {
       const { id } = req.params;
 
-      const product = await Product.findById(id).populate('category', 'name description');
+      const product = await Product.findById(id).populate('category', 'name');
 
       if (!product) {
         throw new NotFoundError('Produto não encontrado');
@@ -115,28 +58,6 @@ class ProductController {
     }
   }
 
-  /**
-   * @swagger
-   * /products:
-   *   post:
-   *     summary: Cria um novo produto
-   *     tags: [Produtos]
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             $ref: '#/components/schemas/Product'
-   *     responses:
-   *       201:
-   *         description: Produto criado com sucesso
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/Product'
-   *       422:
-   *         description: Erro de validação
-   */
   async create(req, res, next) {
     try {
       const { name, description, price, quantity, category, image, active } = req.body;
@@ -163,7 +84,7 @@ class ProductController {
       });
 
       await product.save();
-      await product.populate('category', 'name description');
+      await product.populate('category', 'name');
 
       res.status(StatusCodes.CREATED).json({
         success: true,
@@ -178,37 +99,6 @@ class ProductController {
     }
   }
 
-  /**
-   * @swagger
-   * /products/{id}:
-   *   put:
-   *     summary: Atualiza um produto existente
-   *     tags: [Produtos]
-   *     parameters:
-   *       - in: path
-   *         name: id
-   *         required: true
-   *         schema:
-   *           type: integer
-   *         description: ID do produto
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             $ref: '#/components/schemas/Product'
-   *     responses:
-   *       200:
-   *         description: Produto atualizado com sucesso
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/Product'
-   *       404:
-   *         description: Produto não encontrado
-   *       422:
-   *         description: Erro de validação
-   */
   async update(req, res, next) {
     try {
       const { id } = req.params;
@@ -236,7 +126,7 @@ class ProductController {
         id,
         updates,
         { new: true, runValidators: true }
-      ).populate('category', 'name description');
+      ).populate('category', 'name');
 
       if (!product) {
         throw new NotFoundError('Produto não encontrado');
@@ -255,25 +145,6 @@ class ProductController {
     }
   }
 
-  /**
-   * @swagger
-   * /products/{id}:
-   *   delete:
-   *     summary: Remove um produto
-   *     tags: [Produtos]
-   *     parameters:
-   *       - in: path
-   *         name: id
-   *         required: true
-   *         schema:
-   *           type: integer
-   *         description: ID do produto
-   *     responses:
-   *       204:
-   *         description: Produto removido com sucesso
-   *       404:
-   *         description: Produto não encontrado
-   */
   async delete(req, res, next) {
     try {
       const { id } = req.params;
@@ -290,36 +161,6 @@ class ProductController {
     }
   }
 
-  /**
-   * @swagger
-   * /products/category/{categoryName}:
-   *   get:
-   *     summary: Busca produtos por nome da categoria
-   *     tags: [Produtos]
-   *     parameters:
-   *       - in: path
-   *         name: categoryName
-   *         required: true
-   *         schema:
-   *           type: string
-   *         description: Nome da categoria
-   *     responses:
-   *       200:
-   *         description: Lista de produtos da categoria
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 success:
-   *                   type: boolean
-   *                 count:
-   *                   type: integer
-   *                 data:
-   *                   type: array
-   *                   items:
-   *                     $ref: '#/components/schemas/Product'
-   */
   async getByCategory(req, res, next) {
     try {
       const { categoryName } = req.params;
@@ -339,7 +180,7 @@ class ProductController {
       }
 
       const products = await Product.find({ category: category._id, active: true })
-        .populate('category', 'name description')
+        .populate('category', 'name')
         .sort({ createdAt: -1 });
 
       res.status(StatusCodes.OK).json({
