@@ -2,18 +2,32 @@ const Category = require('../../src/models/category');
 
 describe('Category Model', () => {
   describe('Validação', () => {
-    it('deve criar uma categoria válida', async () => {
+    it('deve criar uma categoria válida com defaults', async () => {
+      const category = await Category.create({ name: 'Frutas' });
+
+      expect(category._id).toBeDefined();
+      expect(category.name).toBe('Frutas');
+      expect(category.image).toBe('');
+      expect(category.active).toBe(true);
+      expect(category.order).toBe(0);
+      expect(category.createdAt).toBeDefined();
+      expect(category.updatedAt).toBeDefined();
+    });
+
+    it('deve criar uma categoria com todos os campos', async () => {
       const categoryData = {
-        name: 'Frutas',
+        name: 'Carnes',
+        image: 'https://example.com/carnes.jpg',
+        active: false,
+        order: 5,
       };
 
-      const category = new Category(categoryData);
-      const savedCategory = await category.save();
+      const category = await Category.create(categoryData);
 
-      expect(savedCategory._id).toBeDefined();
-      expect(savedCategory.name).toBe(categoryData.name);
-      expect(savedCategory.createdAt).toBeDefined();
-      expect(savedCategory.updatedAt).toBeDefined();
+      expect(category.name).toBe(categoryData.name);
+      expect(category.image).toBe(categoryData.image);
+      expect(category.active).toBe(false);
+      expect(category.order).toBe(5);
     });
 
     it('deve falhar sem nome', async () => {
@@ -41,6 +55,33 @@ describe('Category Model', () => {
       const category = await Category.create({ name: '  Carnes  ' });
 
       expect(category.name).toBe('Carnes');
+    });
+
+    it('deve aplicar trim na image', async () => {
+      const category = await Category.create({
+        name: 'Grãos',
+        image: '  https://example.com/graos.jpg  ',
+      });
+
+      expect(category.image).toBe('https://example.com/graos.jpg');
+    });
+
+    it('deve falhar com order negativo', async () => {
+      const category = new Category({
+        name: 'Inválida',
+        order: -1,
+      });
+
+      await expect(category.save()).rejects.toThrow();
+    });
+
+    it('deve aceitar order zero', async () => {
+      const category = await Category.create({
+        name: 'Zero',
+        order: 0,
+      });
+
+      expect(category.order).toBe(0);
     });
   });
 

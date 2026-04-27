@@ -8,7 +8,21 @@ const categorySchema = new mongoose.Schema(
       trim: true,
       unique: true,
       maxlength: [50, 'O nome não pode ter mais de 50 caracteres'],
-    }
+    },
+    image: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    active: {
+      type: Boolean,
+      default: true,
+    },
+    order: {
+      type: Number,
+      default: 0,
+      min: [0, 'A ordem não pode ser negativa'],
+    },
   },
   {
     timestamps: true,

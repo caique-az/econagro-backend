@@ -29,11 +29,12 @@ const run = async () => {
 };
 
 run()
-  .catch(err => {
-    console.error(err.message);
-    process.exit(1);
-  })
-  .finally(() => {
+  .then(() => {
     mongoose.disconnect();
     process.exit(0);
+  })
+  .catch((err) => {
+    console.error(err.message);
+    mongoose.disconnect();
+    process.exit(1);
   });

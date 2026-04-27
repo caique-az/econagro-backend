@@ -2,11 +2,31 @@ const { StatusCodes } = require('http-status-codes');
 const Category = require('../models/category');
 const { NotFoundError, BadRequestError, ValidationError } = require('../utils/errors');
 
+const ALLOWED_FIELDS = ['name', 'image', 'active', 'order'];
+
+const pickFields = (body, fields) => {
+  const result = {};
+  for (const field of fields) {
+    if (body[field] !== undefined) {
+      result[field] = body[field];
+    }
+  }
+  return result;
+};
+
 class CategoryController {
 
   async getAll(req, res, next) {
     try {
-      const categories = await Category.find({}).sort({ name: 1 });
+      const filter = {};
+
+      // Endpoints públicos só veem categorias ativas
+      // Admin pode passar ?includeInactive=true para ver todas
+      if (req.query.includeInactive !== 'true') {
+        filter.active = true;
+      }
+
+      const categories = await Category.find(filter).sort({ order: 1, name: 1 });
 
       return res.status(StatusCodes.OK).json({
         success: true,
@@ -38,9 +58,9 @@ class CategoryController {
 
   async create(req, res, next) {
     try {
-      const { name } = req.body;
+      const data = pickFields(req.body, ALLOWED_FIELDS);
 
-      const category = new Category({ name });
+      const category = new Category(data);
 
       await category.save();
 
@@ -62,11 +82,11 @@ class CategoryController {
   async update(req, res, next) {
     try {
       const { id } = req.params;
-      const { name } = req.body;
+      const updates = pickFields(req.body, ALLOWED_FIELDS);
 
       const category = await Category.findByIdAndUpdate(
         id,
-        { name },
+        updates,
         { new: true, runValidators: true },
       );
 

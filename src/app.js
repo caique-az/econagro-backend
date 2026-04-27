@@ -22,7 +22,7 @@ class App {
           .map((origin) => origin.trim())
           .filter(Boolean)
       : ["http://localhost:3000"];
-    this.app.use(cors({ origin: allowedOrigins }));
+    this.app.use(cors({ origin: allowedOrigins, credentials: true }));
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
 

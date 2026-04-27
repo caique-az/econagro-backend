@@ -1,12 +1,7 @@
-const jwt = require("jsonwebtoken");
 const { StatusCodes } = require("http-status-codes");
 const User = require("../models/user");
 const { BadRequestError, UnauthorizedError } = require("../utils/errors");
-
-const signToken = (id, role) =>
-  jwt.sign({ id, role }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || "7d",
-  });
+const { signToken } = require("../utils/jwt");
 
 class AuthController {
   async register(req, res, next) {

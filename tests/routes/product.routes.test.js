@@ -13,7 +13,6 @@ describe('Product Routes', () => {
     ({ token } = await createAdminAndGetToken());
     category = await Category.create({
       name: 'Frutas',
-      description: 'Frutas frescas',
     });
   });
 
