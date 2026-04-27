@@ -1,5 +1,5 @@
 {
-  "name": "econagro-backend",
+  "name": "econagro",
   "version": "1.0.0",
   "description": "Backend para o sistema EconAgro",
   "main": "src/server.js",
