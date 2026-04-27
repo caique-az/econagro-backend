@@ -1,6 +1,6 @@
 const { StatusCodes } = require('http-status-codes');
 
-const errorHandler = (err, req, res, next) => {
+const errorHandler = (err, req, res, _next) => {
   console.error('Error:', err);
 
   // Default error response

@@ -1,13 +1,12 @@
-const jwt = require('jsonwebtoken');
-const { StatusCodes } = require('http-status-codes');
-const User = require('../models/user');
-const { BadRequestError, UnauthorizedError } = require('../utils/errors');
+const jwt = require("jsonwebtoken");
+const { StatusCodes } = require("http-status-codes");
+const User = require("../models/user");
+const { BadRequestError, UnauthorizedError } = require("../utils/errors");
 
-const signToken = (id, role) => {
-  return jwt.sign({ id, role }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+const signToken = (id, role) =>
+  jwt.sign({ id, role }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN || "7d",
   });
-};
 
 class AuthController {
   async register(req, res, next) {
@@ -16,16 +15,21 @@ class AuthController {
 
       const existing = await User.findOne({ email });
       if (existing) {
-        throw new BadRequestError('E-mail já cadastrado');
+        throw new BadRequestError("E-mail já cadastrado");
       }
 
       const user = await User.create({ name, email, password });
-      const token = signToken(user._id, user.role);
+      const token = signToken(user.id, user.role);
 
       res.status(StatusCodes.CREATED).json({
         success: true,
         token,
-        data: { id: user._id, name: user.name, email: user.email, role: user.role },
+        data: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
       });
     } catch (error) {
       next(error);
@@ -37,20 +41,25 @@ class AuthController {
       const { email, password } = req.body;
 
       if (!email || !password) {
-        throw new BadRequestError('E-mail e senha são obrigatórios');
+        throw new BadRequestError("E-mail e senha são obrigatórios");
       }
 
-      const user = await User.findOne({ email }).select('+password');
+      const user = await User.findOne({ email }).select("+password");
       if (!user || !(await user.comparePassword(password))) {
-        throw new UnauthorizedError('Credenciais inválidas');
+        throw new UnauthorizedError("Credenciais inválidas");
       }
 
-      const token = signToken(user._id, user.role);
+      const token = signToken(user.id, user.role);
 
       res.status(StatusCodes.OK).json({
         success: true,
         token,
-        data: { id: user._id, name: user.name, email: user.email, role: user.role },
+        data: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
       });
     } catch (error) {
       next(error);

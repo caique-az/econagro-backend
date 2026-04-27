@@ -17,8 +17,8 @@ afterAll(async () => {
 });
 
 afterEach(async () => {
-  const collections = mongoose.connection.collections;
-  for (const key in collections) {
-    await collections[key].deleteMany({});
-  }
+  const { collections } = mongoose.connection;
+  await Promise.all(
+    Object.values(collections).map((collection) => collection.deleteMany({})),
+  );
 });

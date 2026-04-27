@@ -26,13 +26,11 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-const authorize = (...roles) => {
-  return (req, res, next) => {
+const authorize = (...roles) => (req, res, next) => {
     if (!roles.includes(req.user.role)) {
       return next(new ForbiddenError('Acesso negado'));
     }
     next();
   };
-};
 
 module.exports = { authenticate, authorize };
