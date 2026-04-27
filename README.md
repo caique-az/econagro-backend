@@ -38,7 +38,7 @@ O objetivo do projeto é demonstrar integração fullstack entre:
 | ODM | Mongoose |
 | Autenticação | JWT |
 | Criptografia de senha | bcryptjs |
-| Validação | express-validator / Mongoose validators |
+| Validação | Mongoose validators |
 | Testes | Jest + Supertest + MongoDB Memory Server |
 | Logs | Morgan |
 | Deploy | Render |
@@ -513,8 +513,6 @@ Implementado:
 
 Fora do escopo desta versão:
 
-- Pagamentos reais
-- Validação real de cupons
 - Newsletter persistida
 - Gestão administrativa via painel web
 
