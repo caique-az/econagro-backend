@@ -1,4 +1,3 @@
-const mongoose = require('mongoose');
 const Category = require('../../src/models/category');
 
 describe('Category Model', () => {
