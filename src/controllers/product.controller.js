@@ -1,10 +1,15 @@
-const { StatusCodes } = require('http-status-codes');
-const mongoose = require('mongoose');
-const { Product, Category } = require('../models');
-const { NotFoundError, BadRequestError, ValidationError } = require('../utils/errors');
+const { StatusCodes } = require("http-status-codes");
+const mongoose = require("mongoose");
+const { Product, Category } = require("../models");
+const {
+  NotFoundError,
+  BadRequestError,
+  ValidationError,
+} = require("../utils/errors");
+
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 class ProductController {
-
   async getAll(req, res, next) {
     try {
       const { category, search, active } = req.query;
@@ -20,15 +25,17 @@ class ProductController {
         filter.active = true;
       }
 
-      if (search) {
+      if (search?.trim()) {
+        const safeSearch = escapeRegex(search.trim());
+
         filter.$or = [
-          { name: { $regex: search, $options: 'i' } },
-          { description: { $regex: search, $options: 'i' } },
+          { name: { $regex: safeSearch, $options: "i" } },
+          { description: { $regex: safeSearch, $options: "i" } },
         ];
       }
 
       const products = await Product.find(filter)
-        .populate('category', 'name')
+        .populate("category", "name")
         .sort({ createdAt: -1 });
 
       res.status(StatusCodes.OK).json({
@@ -45,10 +52,10 @@ class ProductController {
     try {
       const { id } = req.params;
 
-      const product = await Product.findById(id).populate('category', 'name');
+      const product = await Product.findById(id).populate("category", "name");
 
       if (!product) {
-        throw new NotFoundError('Produto não encontrado');
+        throw new NotFoundError("Produto não encontrado");
       }
 
       res.status(StatusCodes.OK).json({
@@ -62,16 +69,18 @@ class ProductController {
 
   async create(req, res, next) {
     try {
-      const { name, description, price, quantity, category, image, active } = req.body;
+      const { name, description, price, quantity, category, image, active } =
+        req.body;
 
-      // Verifica se categoria existe
       if (category) {
         if (!mongoose.Types.ObjectId.isValid(category)) {
-          throw new BadRequestError('ID da categoria inválido');
+          throw new BadRequestError("ID da categoria inválido");
         }
+
         const categoryExists = await Category.findById(category);
+
         if (!categoryExists) {
-          throw new NotFoundError('Categoria não encontrada');
+          throw new NotFoundError("Categoria não encontrada");
         }
       }
 
@@ -86,14 +95,14 @@ class ProductController {
       });
 
       await product.save();
-      await product.populate('category', 'name');
+      await product.populate("category", "name");
 
       res.status(StatusCodes.CREATED).json({
         success: true,
         data: product,
       });
     } catch (error) {
-      if (error.name === 'ValidationError') {
+      if (error.name === "ValidationError") {
         next(new ValidationError(error.message));
       } else {
         next(error);
@@ -104,34 +113,45 @@ class ProductController {
   async update(req, res, next) {
     try {
       const { id } = req.params;
-      // Verifica se categoria existe (se fornecida)
       const { category } = req.body;
+
       if (category) {
         if (!mongoose.Types.ObjectId.isValid(category)) {
-          throw new BadRequestError('ID da categoria inválido');
+          throw new BadRequestError("ID da categoria inválido");
         }
+
         const categoryExists = await Category.findById(category);
+
         if (!categoryExists) {
-          throw new NotFoundError('Categoria não encontrada');
+          throw new NotFoundError("Categoria não encontrada");
         }
       }
 
-      const allowedFields = ['name', 'description', 'price', 'quantity', 'category', 'image', 'active'];
+      const allowedFields = [
+        "name",
+        "description",
+        "price",
+        "quantity",
+        "category",
+        "image",
+        "active",
+      ];
+
       const updates = {};
+
       for (const field of allowedFields) {
         if (req.body[field] !== undefined) {
           updates[field] = req.body[field];
         }
       }
 
-      const product = await Product.findByIdAndUpdate(
-        id,
-        updates,
-        { new: true, runValidators: true }
-      ).populate('category', 'name');
+      const product = await Product.findByIdAndUpdate(id, updates, {
+        new: true,
+        runValidators: true,
+      }).populate("category", "name");
 
       if (!product) {
-        throw new NotFoundError('Produto não encontrado');
+        throw new NotFoundError("Produto não encontrado");
       }
 
       res.status(StatusCodes.OK).json({
@@ -139,7 +159,7 @@ class ProductController {
         data: product,
       });
     } catch (error) {
-      if (error.name === 'ValidationError') {
+      if (error.name === "ValidationError") {
         next(new ValidationError(error.message));
       } else {
         next(error);
@@ -154,7 +174,7 @@ class ProductController {
       const product = await Product.findByIdAndDelete(id);
 
       if (!product) {
-        throw new NotFoundError('Produto não encontrado');
+        throw new NotFoundError("Produto não encontrado");
       }
 
       res.status(StatusCodes.NO_CONTENT).send();
@@ -167,11 +187,12 @@ class ProductController {
     try {
       const { categoryName } = req.params;
 
-      // Busca categoria pelo nome (case-insensitive via collation, evita ReDoS)
-      const category = await Category.findOne({ name: categoryName }).collation({
-        locale: 'pt',
-        strength: 2,
-      });
+      const category = await Category.findOne({ name: categoryName }).collation(
+        {
+          locale: "pt",
+          strength: 2,
+        },
+      );
 
       if (!category) {
         return res.status(StatusCodes.OK).json({
@@ -181,8 +202,11 @@ class ProductController {
         });
       }
 
-      const products = await Product.find({ category: category._id, active: true })
-        .populate('category', 'name')
+      const products = await Product.find({
+        category: category._id,
+        active: true,
+      })
+        .populate("category", "name")
         .sort({ createdAt: -1 });
 
       res.status(StatusCodes.OK).json({
