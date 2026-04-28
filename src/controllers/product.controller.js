@@ -12,14 +12,8 @@ const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 class ProductController {
   async getAll(req, res, next) {
     try {
-      const { category, search, active } = req.query;
-      const filter = {};
-
-      if (active !== undefined) {
-        filter.active = active === "true";
-      } else {
-        filter.active = true;
-      }
+      const { category, search } = req.query;
+      const filter = { active: true };
 
       if (category) {
         const categoryDoc = await Category.findOne({
