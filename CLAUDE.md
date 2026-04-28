@@ -32,9 +32,18 @@ npx jest tests/routes/category.routes.test.js
 
 Before considering any task done: `npm run lint && npm test`.
 
+## Project context
+
+EconAgro is a portfolio fullstack project:
+- **Frontend**: Next.js, deployed on Vercel
+- **Backend**: Node.js/Express/Mongoose, deployed on Render
+- **Database**: MongoDB Atlas
+
+The backend is considered finalized for this stage. Next work is on the frontend. Do not add new backend features unless explicitly requested.
+
 ## Architecture
 
-EconAgro is a portfolio fullstack project: Next.js frontend (Vercel) + Node.js/Express/Mongoose backend (Render) + MongoDB Atlas. CommonJS modules throughout.
+CommonJS modules throughout.
 
 ```
 src/
@@ -68,6 +77,8 @@ Throw errors from `src/utils/errors.js` — the global `errorHandler` middleware
 
 Mongoose `ValidationError` and duplicate key errors (code 11000) are caught and re-thrown as the appropriate custom error class inside controllers before calling `next()`.
 
+`errorHandler` only logs to `console.error` outside of `NODE_ENV=test`.
+
 ### Authentication & Authorization
 
 `src/middlewares/auth.js` exports:
@@ -85,13 +96,14 @@ Roles: `'user'` (default) and `'admin'`. Auth stays Bearer token — no cookie/h
 
 ### Active/inactive visibility rules
 
-**Public endpoints** — must always filter `active: true`. No query param can override this:
+**Public endpoints** — always filter `active: true`, no query param can override this:
 
 - `GET /api/categories` — active categories only
-- `GET /api/categories/:id` — active categories only
-- `GET /api/products` — active products in active categories only
-- `GET /api/products/:id` — active product in active category only
+- `GET /api/categories/:id` — active category only
+- `GET /api/products` — active products in active categories only; `?active=false` is ignored
+- `GET /api/products/:id` — active product in active category only; returns 404 otherwise
 - `GET /api/products/category/:categoryName` — active category, active products only
+- `GET /api/products?category=<id>` — validates ObjectId before querying; returns 400 for invalid ID
 
 **Admin endpoints** — see all records regardless of `active`:
 
@@ -111,7 +123,7 @@ Factory — call as `validateObjectId()` (defaults to param `'id'`) or `validate
 
 ## Tests
 
-Tests use `mongodb-memory-server` — no external MongoDB needed. `tests/setup.js` creates an in-memory server before each suite and wipes all collections after each test.
+Tests use `mongodb-memory-server` — no external MongoDB needed. `tests/setup.js` sets `NODE_ENV=test` first, then creates an in-memory server before each suite and wipes all collections after each test.
 
 Use helpers from `tests/helpers/auth.js`:
 ```js
@@ -121,57 +133,22 @@ const { token } = await createAdminAndGetToken();
 
 Tests are integration-style (Supertest against the real Express app). Do not mock the database.
 
+Morgan HTTP logs are suppressed during tests (`NODE_ENV=test`). `console.error` from `errorHandler` is also suppressed in test mode, except for the one test that explicitly sets `NODE_ENV=development` to verify stack trace behavior.
+
 Minimum test criteria: lint passes, all tests pass, public routes do not expose inactive categories/products, admin routes return 401/403 when unauthenticated/unauthorized.
-
-## Known bugs to fix (branch `feature`)
-
-### 1. `GET /api/products?active=false` exposes inactive products publicly
-
-`GET /api/products` is public and must never return inactive products. The `?active` query param must be removed or ignored on this endpoint.
-
-Expected behavior:
-- `GET /api/products` → only active products in active categories
-- `GET /api/products?active=false` → same as above, param ignored
-
-Tests to add:
-- inactive product does not appear in listing
-- `?active=false` does not expose inactive products
-- active product in active category appears
-- active product in inactive category does not appear
-
-### 2. `GET /api/products/:id` exposes inactive products and products of inactive categories
-
-Must use `findOne({ _id: id, active: true })` and verify the populated category is also active. Return 404 if product is inactive or its category is inactive.
-
-Direction:
-```js
-const product = await Product.findOne({ _id: id, active: true }).populate({
-  path: 'category',
-  select: 'name active',
-  match: { active: true },
-});
-
-if (!product || !product.category) {
-  throw new NotFoundError('Produto não encontrado');
-}
-```
-
-Tests to add:
-- active product in active category → 200
-- inactive product → 404
-- active product in inactive category → 404
-- nonexistent ID → 404
-- invalid ID → 400 (via middleware, no change needed)
 
 ## Pending features (implement only when explicitly requested)
 
-- **Auth contract** — `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` must return stable token + user data + predictable errors. Already implemented; keep contracts stable.
-- **Dynamic categories** — Category model already has `name`, `image`, `active`, `order`. Public listing ordered by `order` then `name`. Already implemented.
-- **Admin API** — Routes exist; keep protected and covered with 401/403 tests.
-- **Password reset** — Not yet; requires token generation, secure storage, expiry, no email-existence leak, email sending.
-- **Contact form** — Not yet; decide on persistence vs. email, validate payload, prevent spam.
-- **Newsletter** — Not yet; decide on own backend vs. external service, dedup emails.
+- **Frontend auth integration** — `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` contracts are stable and ready.
+- **Dynamic categories on frontend** — Category model has `name`, `image`, `active`, `order`; public listing ordered by `order` then `name`.
+- **Admin UI** — Admin routes exist and are protected; frontend panel not yet built.
+- **Password reset** — Requires token generation, secure storage, expiry, no email-existence leak, email sending.
+- **Contact form** — Decide on persistence vs. email, validate payload, prevent spam.
+- **Newsletter** — Decide on own backend vs. external service, dedup emails.
 - **Orders/checkout** — Out of scope entirely.
+- **Cookie httpOnly / CORS credentials** — Not until auth strategy changes.
+- **TypeScript migration** — Not planned for this stage.
+- **Controllers refactor to functions** — Not planned for this stage.
 
 ## Conventions
 
@@ -189,14 +166,6 @@ Tests to add:
 - Do not return inactive category or product on any public endpoint.
 - Do not create admin routes without `authenticate` + `authorize('admin')`.
 - Do not run a broad refactor alongside a focused bug fix — keep them separate.
-
-## Recommended immediate work order
-
-1. Fix `GET /api/products` — remove/ignore `?active` param, always filter active.
-2. Fix `GET /api/products/:id` — filter `active: true` and verify populated category is active.
-3. Add tests for both cases.
-4. `npm run lint && npm test`.
-5. Only then consider merging branch `feature` into `master`.
 
 ## ESLint
 
