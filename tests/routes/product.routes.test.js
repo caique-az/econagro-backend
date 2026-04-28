@@ -113,6 +113,13 @@ describe('Product Routes', () => {
       expect(res.body.data.map((p) => p.name)).not.toContain('Escondido');
     });
 
+    it('deve retornar 400 para category ID inválido', async () => {
+      const res = await request(app).get('/api/products?category=invalid-id');
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+    });
+
     it('não deve retornar produtos ao filtrar por categoria inativa', async () => {
       const inactiveCategory = await Category.create({
         name: 'Escondida',
