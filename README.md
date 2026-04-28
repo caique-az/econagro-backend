@@ -326,8 +326,9 @@ Authorization: Bearer <token>
 | Param | Descrição | Exemplo |
 |---|---|---|
 | `search` | Busca por nome ou descrição | `/api/products?search=banana` |
-| `category` | Filtra por ID da categoria | `/api/products?category=...` |
-| `active` | Filtra ativos/inativos | `/api/products?active=true` |
+| `category` | Filtra por ObjectId da categoria (retorna 400 se inválido) | `/api/products?category=<objectId>` |
+
+> Endpoints públicos sempre retornam apenas produtos e categorias **ativos**.
 
 ### Exemplo de resposta
 
@@ -383,18 +384,22 @@ Body:
 
 | Método | Rota | Descrição | Auth |
 |---|---|---|---|
-| `GET` | `/api/categories` | Lista categorias | Pública |
-| `GET` | `/api/categories/:id` | Busca categoria por ID | Pública |
+| `GET` | `/api/categories` | Lista categorias ativas | Pública |
+| `GET` | `/api/categories/:id` | Busca categoria ativa por ID | Pública |
+| `GET` | `/api/categories/admin` | Lista todas as categorias (ativas e inativas) | Admin |
+| `GET` | `/api/categories/admin/:id` | Busca qualquer categoria por ID | Admin |
 | `POST` | `/api/categories` | Cria categoria | Admin |
 | `PUT` | `/api/categories/:id` | Atualiza categoria | Admin |
-| `DELETE` | `/api/categories/:id` | Remove categoria | Admin |
+| `DELETE` | `/api/categories/:id` | Remove categoria (falha se tiver produtos) | Admin |
 
-### Exemplo de categoria
+### Exemplo de corpo para criar/atualizar categoria
 
 ```json
 {
   "name": "Frutas",
-  "description": "Produtos agrícolas da categoria frutas"
+  "image": "https://res.cloudinary.com/...",
+  "active": true,
+  "order": 1
 }
 ```
 
