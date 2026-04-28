@@ -16,6 +16,10 @@ class ProductController {
       const filter = { active: true };
 
       if (category) {
+        if (!mongoose.Types.ObjectId.isValid(category)) {
+          throw new BadRequestError('ID da categoria inválido');
+        }
+
         const categoryDoc = await Category.findOne({
           _id: category,
           active: true,
