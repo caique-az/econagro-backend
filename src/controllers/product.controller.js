@@ -64,9 +64,13 @@ class ProductController {
     try {
       const { id } = req.params;
 
-      const product = await Product.findById(id).populate("category", "name");
+      const product = await Product.findOne({ _id: id, active: true }).populate({
+        path: "category",
+        select: "name active",
+        match: { active: true },
+      });
 
-      if (!product) {
+      if (!product || !product.category) {
         throw new NotFoundError("Produto não encontrado");
       }
 
