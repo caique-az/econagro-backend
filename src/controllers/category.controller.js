@@ -18,15 +18,21 @@ class CategoryController {
 
   async getAll(req, res, next) {
     try {
-      const filter = {};
+      const categories = await Category.find({ active: true }).sort({ order: 1, name: 1 });
 
-      // Endpoints públicos só veem categorias ativas
-      // Admin pode passar ?includeInactive=true para ver todas
-      if (req.query.includeInactive !== 'true') {
-        filter.active = true;
-      }
+      return res.status(StatusCodes.OK).json({
+        success: true,
+        count: categories.length,
+        data: categories,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 
-      const categories = await Category.find(filter).sort({ order: 1, name: 1 });
+  async getAllAdmin(req, res, next) {
+    try {
+      const categories = await Category.find({}).sort({ order: 1, name: 1 });
 
       return res.status(StatusCodes.OK).json({
         success: true,
@@ -39,6 +45,24 @@ class CategoryController {
   }
 
   async getById(req, res, next) {
+    try {
+      const { id } = req.params;
+      const category = await Category.findOne({ _id: id, active: true }).populate('products');
+
+      if (!category) {
+        throw new NotFoundError('Categoria não encontrada');
+      }
+
+      return res.status(StatusCodes.OK).json({
+        success: true,
+        data: category,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getByIdAdmin(req, res, next) {
     try {
       const { id } = req.params;
       const category = await Category.findById(id).populate('products');

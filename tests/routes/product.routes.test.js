@@ -26,7 +26,7 @@ describe('Product Routes', () => {
       expect(res.body.count).toBe(0);
     });
 
-    it('deve retornar todos os produtos', async () => {
+    it('deve retornar todos os produtos ativos de categorias ativas', async () => {
       await Product.create([
         { name: 'Banana', price: 5, quantity: 10, category: category._id },
         { name: 'Maçã', price: 8, quantity: 20, category: category._id },
@@ -77,6 +77,69 @@ describe('Product Routes', () => {
 
       expect(res.body.data[0].category.name).toBe('Frutas');
     });
+
+    it('não deve retornar produtos de categoria inativa', async () => {
+      const inactiveCategory = await Category.create({
+        name: 'Escondida',
+        active: false,
+      });
+
+      await Product.create([
+        { name: 'Visível', price: 5, quantity: 10, category: category._id },
+        { name: 'Escondido', price: 8, quantity: 20, category: inactiveCategory._id },
+      ]);
+
+      const res = await request(app).get('/api/products');
+
+      expect(res.body.count).toBe(1);
+      expect(res.body.data[0].name).toBe('Visível');
+      expect(res.body.data.map((p) => p.name)).not.toContain('Escondido');
+    });
+
+    it('não deve retornar produtos ao filtrar por categoria inativa', async () => {
+      const inactiveCategory = await Category.create({
+        name: 'Escondida',
+        active: false,
+      });
+
+      await Product.create({
+        name: 'Produto',
+        price: 5,
+        quantity: 10,
+        category: inactiveCategory._id,
+      });
+
+      const res = await request(app).get(`/api/products?category=${inactiveCategory._id}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.count).toBe(0);
+      expect(res.body.data).toEqual([]);
+    });
+
+    it('produtos devem reaparecer ao reativar categoria', async () => {
+      const toggleCategory = await Category.create({
+        name: 'Toggle',
+        active: false,
+      });
+
+      await Product.create({
+        name: 'Reaparecido',
+        price: 5,
+        quantity: 10,
+        category: toggleCategory._id,
+      });
+
+      // Inativa — não aparece
+      let res = await request(app).get('/api/products');
+      expect(res.body.data.map((p) => p.name)).not.toContain('Reaparecido');
+
+      // Reativar
+      await Category.findByIdAndUpdate(toggleCategory._id, { active: true });
+
+      // Ativa — aparece
+      res = await request(app).get('/api/products');
+      expect(res.body.data.map((p) => p.name)).toContain('Reaparecido');
+    });
   });
 
   describe('GET /api/products/:id', () => {
@@ -113,7 +176,7 @@ describe('Product Routes', () => {
   });
 
   describe('GET /api/products/category/:categoryName', () => {
-    it('deve retornar produtos por nome da categoria', async () => {
+    it('deve retornar produtos por nome da categoria ativa', async () => {
       await Product.create([
         { name: 'Banana', price: 5, quantity: 10, category: category._id },
         { name: 'Maçã', price: 8, quantity: 20, category: category._id },
@@ -158,6 +221,26 @@ describe('Product Routes', () => {
       expect(res.body.count).toBe(1);
       expect(res.body.data[0].name).toBe('Ativo');
     });
+
+    it('deve retornar lista vazia para categoria inativa', async () => {
+      const inactiveCategory = await Category.create({
+        name: 'Escondida',
+        active: false,
+      });
+
+      await Product.create({
+        name: 'Produto',
+        price: 5,
+        quantity: 10,
+        category: inactiveCategory._id,
+      });
+
+      const res = await request(app).get('/api/products/category/Escondida');
+
+      expect(res.status).toBe(200);
+      expect(res.body.count).toBe(0);
+      expect(res.body.data).toEqual([]);
+    });
   });
 
   describe('POST /api/products', () => {
@@ -181,13 +264,13 @@ describe('Product Routes', () => {
       expect(res.body.data.category.name).toBe('Frutas');
     });
 
-    it('deve retornar erro sem campos obrigatórios', async () => {
+    it('deve retornar 422 sem campos obrigatórios', async () => {
       const res = await request(app)
         .post('/api/products')
         .set('Authorization', `Bearer ${token}`)
         .send({ name: 'Teste' });
 
-      expect([400, 422]).toContain(res.status);
+      expect(res.status).toBe(422);
       expect(res.body.success).toBe(false);
     });
 
@@ -219,6 +302,26 @@ describe('Product Routes', () => {
         });
 
       expect(res.status).toBe(400);
+    });
+
+    it('deve permitir criar produto em categoria inativa (uso admin)', async () => {
+      const inactiveCategory = await Category.create({
+        name: 'Inativa',
+        active: false,
+      });
+
+      const res = await request(app)
+        .post('/api/products')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          name: 'Produto Admin',
+          price: 10,
+          quantity: 5,
+          category: inactiveCategory._id.toString(),
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.data.name).toBe('Produto Admin');
     });
   });
 
@@ -268,6 +371,27 @@ describe('Product Routes', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.data.category.name).toBe('Carnes');
+    });
+
+    it('deve permitir mover produto para categoria inativa (uso admin)', async () => {
+      const inactiveCategory = await Category.create({
+        name: 'Inativa',
+        active: false,
+      });
+
+      const product = await Product.create({
+        name: 'Teste',
+        price: 10,
+        quantity: 5,
+        category: category._id,
+      });
+
+      const res = await request(app)
+        .put(`/api/products/${product._id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ category: inactiveCategory._id.toString() });
+
+      expect(res.status).toBe(200);
     });
   });
 

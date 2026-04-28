@@ -15,14 +15,32 @@ class ProductController {
       const { category, search, active } = req.query;
       const filter = {};
 
-      if (category) {
-        filter.category = category;
-      }
-
       if (active !== undefined) {
         filter.active = active === "true";
       } else {
         filter.active = true;
+      }
+
+      if (category) {
+        const categoryDoc = await Category.findOne({
+          _id: category,
+          active: true,
+        });
+
+        if (!categoryDoc) {
+          return res.status(StatusCodes.OK).json({
+            success: true,
+            count: 0,
+            data: [],
+          });
+        }
+
+        filter.category = category;
+      } else {
+        const activeCategoryIds = await Category.find({ active: true }).distinct(
+          "_id",
+        );
+        filter.category = { $in: activeCategoryIds };
       }
 
       if (search?.trim()) {
@@ -187,12 +205,13 @@ class ProductController {
     try {
       const { categoryName } = req.params;
 
-      const category = await Category.findOne({ name: categoryName }).collation(
-        {
-          locale: "pt",
-          strength: 2,
-        },
-      );
+      const category = await Category.findOne({
+        name: categoryName,
+        active: true,
+      }).collation({
+        locale: "pt",
+        strength: 2,
+      });
 
       if (!category) {
         return res.status(StatusCodes.OK).json({

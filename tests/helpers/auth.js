@@ -17,4 +17,20 @@ const createAdminAndGetToken = async () => {
   return { admin, token: res.body.token };
 };
 
-module.exports = { createAdminAndGetToken };
+const createUserAndGetToken = async () => {
+  const user = await User.create({
+    name: 'User Test',
+    email: 'user@test.com',
+    password: 'password123',
+    role: 'user',
+  });
+
+  const res = await request(app)
+    .post('/api/auth/login')
+    .send({ email: 'user@test.com', password: 'password123' });
+
+  return { user, token: res.body.token };
+};
+
+module.exports = { createAdminAndGetToken, createUserAndGetToken };
+

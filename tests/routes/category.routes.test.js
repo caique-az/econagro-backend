@@ -2,14 +2,19 @@ const request = require('supertest');
 const mongoose = require('mongoose');
 const app = require('../../src/app');
 const Category = require('../../src/models/category');
-const { createAdminAndGetToken } = require('../helpers/auth');
+const Product = require('../../src/models/product');
+const { createAdminAndGetToken, createUserAndGetToken } = require('../helpers/auth');
 
 describe('Category Routes', () => {
-  let token;
+  let adminToken;
+  let userToken;
 
   beforeEach(async () => {
-    ({ token } = await createAdminAndGetToken());
+    ({ token: adminToken } = await createAdminAndGetToken());
+    ({ token: userToken } = await createUserAndGetToken());
   });
+
+  // ─── Rotas Públicas ───────────────────────────────────────────────
 
   describe('GET /api/categories', () => {
     it('deve retornar lista vazia quando não há categorias', async () => {
@@ -21,7 +26,7 @@ describe('Category Routes', () => {
       expect(res.body.count).toBe(0);
     });
 
-    it('deve retornar apenas categorias ativas por padrão', async () => {
+    it('deve retornar apenas categorias ativas', async () => {
       await Category.create([
         { name: 'Frutas', active: true },
         { name: 'Carnes', active: true },
@@ -31,22 +36,22 @@ describe('Category Routes', () => {
       const res = await request(app).get('/api/categories');
 
       expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
       expect(res.body.count).toBe(2);
       expect(res.body.data).toHaveLength(2);
       expect(res.body.data.map((c) => c.name)).not.toContain('Inativa');
     });
 
-    it('deve retornar todas as categorias com includeInactive=true', async () => {
+    it('não deve expor categorias inativas via includeInactive na rota pública', async () => {
       await Category.create([
-        { name: 'Frutas', active: true },
+        { name: 'Ativa', active: true },
         { name: 'Inativa', active: false },
       ]);
 
       const res = await request(app).get('/api/categories?includeInactive=true');
 
       expect(res.status).toBe(200);
-      expect(res.body.count).toBe(2);
+      expect(res.body.count).toBe(1);
+      expect(res.body.data.map((c) => c.name)).not.toContain('Inativa');
     });
 
     it('deve retornar categorias ordenadas por order e depois por nome', async () => {
@@ -65,7 +70,7 @@ describe('Category Routes', () => {
   });
 
   describe('GET /api/categories/:id', () => {
-    it('deve retornar uma categoria por ID', async () => {
+    it('deve retornar uma categoria ativa por ID', async () => {
       const category = await Category.create({
         name: 'Frutas',
         image: 'https://example.com/frutas.jpg',
@@ -80,6 +85,18 @@ describe('Category Routes', () => {
       expect(res.body.data.image).toBe('https://example.com/frutas.jpg');
       expect(res.body.data.order).toBe(1);
       expect(res.body.data.active).toBe(true);
+    });
+
+    it('deve retornar 404 para categoria inativa por ID na rota pública', async () => {
+      const category = await Category.create({
+        name: 'Escondida',
+        active: false,
+      });
+
+      const res = await request(app).get(`/api/categories/${category._id}`);
+
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
     });
 
     it('deve retornar 404 para ID inexistente', async () => {
@@ -99,11 +116,84 @@ describe('Category Routes', () => {
     });
   });
 
+  // ─── Rotas Admin ──────────────────────────────────────────────────
+
+  describe('GET /api/categories/admin', () => {
+    it('admin deve ver todas as categorias incluindo inativas', async () => {
+      await Category.create([
+        { name: 'Ativa', active: true },
+        { name: 'Inativa', active: false },
+      ]);
+
+      const res = await request(app)
+        .get('/api/categories/admin')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.count).toBe(2);
+      expect(res.body.data.map((c) => c.name)).toContain('Inativa');
+    });
+
+    it('deve retornar 403 para usuário comum', async () => {
+      const res = await request(app)
+        .get('/api/categories/admin')
+        .set('Authorization', `Bearer ${userToken}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('deve retornar 401 sem token', async () => {
+      const res = await request(app).get('/api/categories/admin');
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+    });
+  });
+
+  describe('GET /api/categories/admin/:id', () => {
+    it('admin deve ver categoria inativa por ID', async () => {
+      const category = await Category.create({
+        name: 'Escondida',
+        active: false,
+      });
+
+      const res = await request(app)
+        .get(`/api/categories/admin/${category._id}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.name).toBe('Escondida');
+      expect(res.body.data.active).toBe(false);
+    });
+
+    it('deve retornar 403 para usuário comum', async () => {
+      const category = await Category.create({ name: 'Teste' });
+
+      const res = await request(app)
+        .get(`/api/categories/admin/${category._id}`)
+        .set('Authorization', `Bearer ${userToken}`);
+
+      expect(res.status).toBe(403);
+    });
+
+    it('deve retornar 401 sem token', async () => {
+      const category = await Category.create({ name: 'Teste' });
+
+      const res = await request(app)
+        .get(`/api/categories/admin/${category._id}`);
+
+      expect(res.status).toBe(401);
+    });
+  });
+
+  // ─── CRUD Admin ───────────────────────────────────────────────────
+
   describe('POST /api/categories', () => {
     it('deve criar uma nova categoria com apenas nome', async () => {
       const res = await request(app)
         .post('/api/categories')
-        .set('Authorization', `Bearer ${token}`)
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({ name: 'Frutas' });
 
       expect(res.status).toBe(201);
@@ -120,7 +210,7 @@ describe('Category Routes', () => {
     it('deve criar categoria com todos os campos', async () => {
       const res = await request(app)
         .post('/api/categories')
-        .set('Authorization', `Bearer ${token}`)
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({
           name: 'Carnes',
           image: 'https://example.com/carnes.jpg',
@@ -140,20 +230,39 @@ describe('Category Routes', () => {
 
       const res = await request(app)
         .post('/api/categories')
-        .set('Authorization', `Bearer ${token}`)
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({ name: 'Frutas' });
 
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
     });
 
-    it('deve retornar erro sem nome', async () => {
+    it('deve retornar 422 sem nome', async () => {
       const res = await request(app)
         .post('/api/categories')
-        .set('Authorization', `Bearer ${token}`)
-        .send({ });
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({});
 
-      expect([400, 422]).toContain(res.status);
+      expect(res.status).toBe(422);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('deve retornar 401 sem token', async () => {
+      const res = await request(app)
+        .post('/api/categories')
+        .send({ name: 'Teste' });
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('deve retornar 403 para usuário comum', async () => {
+      const res = await request(app)
+        .post('/api/categories')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ name: 'Teste' });
+
+      expect(res.status).toBe(403);
       expect(res.body.success).toBe(false);
     });
   });
@@ -164,7 +273,7 @@ describe('Category Routes', () => {
 
       const res = await request(app)
         .put(`/api/categories/${category._id}`)
-        .set('Authorization', `Bearer ${token}`)
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({ name: 'Frutas Tropicais' });
 
       expect(res.status).toBe(200);
@@ -177,7 +286,7 @@ describe('Category Routes', () => {
 
       const res = await request(app)
         .put(`/api/categories/${category._id}`)
-        .set('Authorization', `Bearer ${token}`)
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({
           image: 'https://example.com/carnes-new.jpg',
           active: false,
@@ -195,7 +304,7 @@ describe('Category Routes', () => {
 
       const res = await request(app)
         .put(`/api/categories/${fakeId}`)
-        .set('Authorization', `Bearer ${token}`)
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({ name: 'Teste' });
 
       expect(res.status).toBe(404);
@@ -207,20 +316,43 @@ describe('Category Routes', () => {
 
       const res = await request(app)
         .put(`/api/categories/${category._id}`)
-        .set('Authorization', `Bearer ${token}`)
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({ name: 'Frutas' });
 
       expect(res.status).toBe(400);
     });
+
+    it('deve retornar 401 sem token', async () => {
+      const category = await Category.create({ name: 'Teste' });
+
+      const res = await request(app)
+        .put(`/api/categories/${category._id}`)
+        .send({ name: 'Novo' });
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('deve retornar 403 para usuário comum', async () => {
+      const category = await Category.create({ name: 'Teste' });
+
+      const res = await request(app)
+        .put(`/api/categories/${category._id}`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ name: 'Novo' });
+
+      expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
+    });
   });
 
   describe('DELETE /api/categories/:id', () => {
-    it('deve deletar uma categoria', async () => {
+    it('deve deletar uma categoria sem produtos', async () => {
       const category = await Category.create({ name: 'Frutas' });
 
       const res = await request(app)
         .delete(`/api/categories/${category._id}`)
-        .set('Authorization', `Bearer ${token}`);
+        .set('Authorization', `Bearer ${adminToken}`);
 
       expect(res.status).toBe(204);
 
@@ -228,14 +360,56 @@ describe('Category Routes', () => {
       expect(deleted).toBeNull();
     });
 
+    it('deve retornar 400 ao tentar deletar categoria com produtos associados', async () => {
+      const category = await Category.create({ name: 'Frutas' });
+      await Product.create({
+        name: 'Banana',
+        price: 5,
+        quantity: 10,
+        category: category._id,
+      });
+
+      const res = await request(app)
+        .delete(`/api/categories/${category._id}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toMatch(/produtos associados/i);
+
+      const stillExists = await Category.findById(category._id);
+      expect(stillExists).not.toBeNull();
+    });
+
     it('deve retornar 404 para ID inexistente', async () => {
       const fakeId = new mongoose.Types.ObjectId();
 
       const res = await request(app)
         .delete(`/api/categories/${fakeId}`)
-        .set('Authorization', `Bearer ${token}`);
+        .set('Authorization', `Bearer ${adminToken}`);
 
       expect(res.status).toBe(404);
+    });
+
+    it('deve retornar 401 sem token', async () => {
+      const category = await Category.create({ name: 'Teste' });
+
+      const res = await request(app)
+        .delete(`/api/categories/${category._id}`);
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('deve retornar 403 para usuário comum', async () => {
+      const category = await Category.create({ name: 'Teste' });
+
+      const res = await request(app)
+        .delete(`/api/categories/${category._id}`)
+        .set('Authorization', `Bearer ${userToken}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
     });
   });
 });

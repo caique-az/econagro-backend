@@ -28,7 +28,7 @@ describe('Auth Routes', () => {
       );
     });
 
-    it('deve retornar erro para e-mail já cadastrado', async () => {
+    it('deve retornar 400 para e-mail já cadastrado', async () => {
       await User.create(validUser);
 
       const res = await request(app)
@@ -40,39 +40,39 @@ describe('Auth Routes', () => {
       expect(res.body.message).toMatch(/já cadastrado/i);
     });
 
-    it('deve retornar erro sem nome', async () => {
+    it('deve retornar 422 sem nome', async () => {
       const res = await request(app)
         .post('/api/auth/register')
         .send({ email: 'x@x.com', password: '123456' });
 
-      expect([400, 422]).toContain(res.status);
+      expect(res.status).toBe(422);
       expect(res.body.success).toBe(false);
     });
 
-    it('deve retornar erro sem e-mail', async () => {
+    it('deve retornar 422 sem e-mail', async () => {
       const res = await request(app)
         .post('/api/auth/register')
         .send({ name: 'Teste', password: '123456' });
 
-      expect([400, 422]).toContain(res.status);
+      expect(res.status).toBe(422);
       expect(res.body.success).toBe(false);
     });
 
-    it('deve retornar erro sem senha', async () => {
+    it('deve retornar 422 sem senha', async () => {
       const res = await request(app)
         .post('/api/auth/register')
         .send({ name: 'Teste', email: 'x@x.com' });
 
-      expect([400, 422]).toContain(res.status);
+      expect(res.status).toBe(422);
       expect(res.body.success).toBe(false);
     });
 
-    it('deve retornar erro com senha curta', async () => {
+    it('deve retornar 422 com senha curta', async () => {
       const res = await request(app)
         .post('/api/auth/register')
         .send({ name: 'Teste', email: 'x@x.com', password: '123' });
 
-      expect([400, 422]).toContain(res.status);
+      expect(res.status).toBe(422);
       expect(res.body.success).toBe(false);
     });
 

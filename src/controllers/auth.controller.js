@@ -1,6 +1,10 @@
 const { StatusCodes } = require("http-status-codes");
 const User = require("../models/user");
-const { BadRequestError, UnauthorizedError } = require("../utils/errors");
+const {
+  BadRequestError,
+  UnauthorizedError,
+  ValidationError,
+} = require("../utils/errors");
 const { signToken } = require("../utils/jwt");
 
 class AuthController {
@@ -27,7 +31,11 @@ class AuthController {
         },
       });
     } catch (error) {
-      next(error);
+      if (error.name === "ValidationError" && !error.isOperational) {
+        next(new ValidationError(error.message));
+      } else {
+        next(error);
+      }
     }
   }
 
