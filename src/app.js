@@ -27,7 +27,7 @@ class App {
     this.app.use(express.urlencoded({ extended: true }));
 
     // Logs em desenvolvimento
-    if (process.env.NODE_ENV !== 'production') {
+    if (process.env.NODE_ENV === 'development') {
       this.app.use(morgan('dev'));
     }
   }

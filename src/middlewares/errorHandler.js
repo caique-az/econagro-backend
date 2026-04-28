@@ -1,7 +1,9 @@
 const { StatusCodes } = require('http-status-codes');
 
 const errorHandler = (err, req, res, _next) => {
-  console.error('Error:', err);
+  if (process.env.NODE_ENV !== 'test') {
+    console.error('Error:', err);
+  }
 
   // Default error response
   const response = {
