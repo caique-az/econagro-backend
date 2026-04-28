@@ -52,17 +52,34 @@ describe('Product Routes', () => {
       expect(res.body.data[0].name).toBe('Banana Prata');
     });
 
-    it('deve filtrar produtos ativos', async () => {
+    it('não deve retornar produto inativo', async () => {
       await Product.create([
         { name: 'Ativo', price: 5, quantity: 10, category: category._id, active: true },
         { name: 'Inativo', price: 8, quantity: 20, category: category._id, active: false },
       ]);
 
-      const res = await request(app).get('/api/products?active=true');
+      const res = await request(app).get('/api/products');
 
       expect(res.status).toBe(200);
       expect(res.body.count).toBe(1);
       expect(res.body.data[0].name).toBe('Ativo');
+      expect(res.body.data.map((p) => p.name)).not.toContain('Inativo');
+    });
+
+    it('não deve expor produto inativo ao passar ?active=false', async () => {
+      await Product.create({
+        name: 'Inativo',
+        price: 8,
+        quantity: 20,
+        category: category._id,
+        active: false,
+      });
+
+      const res = await request(app).get('/api/products?active=false');
+
+      expect(res.status).toBe(200);
+      expect(res.body.count).toBe(0);
+      expect(res.body.data).toEqual([]);
     });
 
     it('deve popular categoria nos produtos', async () => {
@@ -172,6 +189,41 @@ describe('Product Routes', () => {
       const res = await request(app).get('/api/products/invalid-id');
 
       expect(res.status).toBe(400);
+    });
+
+    it('deve retornar 404 para produto inativo', async () => {
+      const product = await Product.create({
+        name: 'Inativo',
+        price: 5,
+        quantity: 10,
+        category: category._id,
+        active: false,
+      });
+
+      const res = await request(app).get(`/api/products/${product._id}`);
+
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('deve retornar 404 para produto ativo em categoria inativa', async () => {
+      const inactiveCategory = await Category.create({
+        name: 'Inativa',
+        active: false,
+      });
+
+      const product = await Product.create({
+        name: 'Produto',
+        price: 5,
+        quantity: 10,
+        category: inactiveCategory._id,
+        active: true,
+      });
+
+      const res = await request(app).get(`/api/products/${product._id}`);
+
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
     });
   });
 
