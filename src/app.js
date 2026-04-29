@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const morgan = require('morgan');
 const errorHandler = require('./middlewares/errorHandler');
 const routes = require('./routes');
@@ -13,10 +14,9 @@ class App {
   }
 
   middlewares() {
-    // Configurações de segurança básicas
     this.app.disable('x-powered-by');
+    this.app.use(helmet());
 
-    // Middlewares essenciais
     const allowedOrigins = process.env.ALLOWED_ORIGINS
       ? process.env.ALLOWED_ORIGINS.split(",")
         .map((origin) => origin.trim())
