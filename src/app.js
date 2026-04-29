@@ -14,6 +14,7 @@ class App {
   }
 
   middlewares() {
+    this.app.set('trust proxy', 1);
     this.app.disable('x-powered-by');
     this.app.use(helmet());
 
