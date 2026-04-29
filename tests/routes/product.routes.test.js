@@ -9,6 +9,10 @@ describe('Product Routes', () => {
   let category;
   let token;
 
+  beforeAll(async () => {
+    await Product.syncIndexes();
+  });
+
   beforeEach(async () => {
     ({ token } = await createAdminAndGetToken());
     category = await Category.create({
@@ -39,17 +43,94 @@ describe('Product Routes', () => {
       expect(res.body.data).toHaveLength(2);
     });
 
-    it('deve filtrar produtos por busca', async () => {
+    it('deve filtrar produtos por busca no nome', async () => {
       await Product.create([
         { name: 'Banana Prata', price: 5, quantity: 10, category: category._id },
         { name: 'Maçã Fuji', price: 8, quantity: 20, category: category._id },
       ]);
 
-      const res = await request(app).get('/api/products?search=banana');
+      const res = await request(app).get('/api/products?search=Banana');
 
       expect(res.status).toBe(200);
       expect(res.body.count).toBe(1);
       expect(res.body.data[0].name).toBe('Banana Prata');
+    });
+
+    it('deve filtrar produtos por busca na descrição', async () => {
+      await Product.create([
+        {
+          name: 'Produto A',
+          description: 'orgânico especial',
+          price: 5,
+          quantity: 10,
+          category: category._id,
+        },
+        { name: 'Produto B', price: 8, quantity: 20, category: category._id },
+      ]);
+
+      const res = await request(app).get('/api/products?search=orgânico');
+
+      expect(res.status).toBe(200);
+      expect(res.body.count).toBe(1);
+      expect(res.body.data[0].name).toBe('Produto A');
+    });
+
+    it('deve retornar lista vazia quando busca não tem resultado', async () => {
+      await Product.create({
+        name: 'Banana',
+        price: 5,
+        quantity: 10,
+        category: category._id,
+      });
+
+      const res = await request(app).get('/api/products?search=naoexiste');
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.count).toBe(0);
+      expect(res.body.data).toEqual([]);
+    });
+
+    it('busca com espaços em branco se comporta como listagem normal', async () => {
+      await Product.create({
+        name: 'Banana',
+        price: 5,
+        quantity: 10,
+        category: category._id,
+      });
+
+      const res = await request(app).get('/api/products?search=   ');
+
+      expect(res.status).toBe(200);
+      expect(res.body.count).toBe(1);
+    });
+
+    it('busca não retorna produto inativo', async () => {
+      await Product.create([
+        { name: 'Banana Ativa', price: 5, quantity: 10, category: category._id, active: true },
+        { name: 'Banana Inativa', price: 5, quantity: 10, category: category._id, active: false },
+      ]);
+
+      const res = await request(app).get('/api/products?search=Banana');
+
+      expect(res.status).toBe(200);
+      expect(res.body.count).toBe(1);
+      expect(res.body.data[0].name).toBe('Banana Ativa');
+    });
+
+    it('busca não retorna produto de categoria inativa', async () => {
+      const inactiveCategory = await Category.create({ name: 'Escondida', active: false });
+
+      await Product.create([
+        { name: 'Manga Visível', price: 5, quantity: 10, category: category._id },
+        { name: 'Manga Oculta', price: 5, quantity: 10, category: inactiveCategory._id },
+      ]);
+
+      const res = await request(app).get('/api/products?search=Manga');
+
+      expect(res.status).toBe(200);
+      expect(res.body.count).toBe(1);
+      expect(res.body.data[0].name).toBe('Manga Visível');
     });
 
     it('não deve retornar produto inativo', async () => {

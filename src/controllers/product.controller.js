@@ -7,8 +7,6 @@ const {
   ValidationError,
 } = require("../utils/errors");
 
-const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
 class ProductController {
   async getAll(req, res, next) {
     try {
@@ -41,18 +39,25 @@ class ProductController {
         filter.category = { $in: activeCategoryIds };
       }
 
-      if (search?.trim()) {
-        const safeSearch = escapeRegex(search.trim());
+      const trimmedSearch = search?.trim();
 
-        filter.$or = [
-          { name: { $regex: safeSearch, $options: "i" } },
-          { description: { $regex: safeSearch, $options: "i" } },
-        ];
+      if (trimmedSearch) {
+        filter.$text = { $search: trimmedSearch };
       }
 
-      const products = await Product.find(filter)
-        .populate("category", "name")
-        .sort({ createdAt: -1 });
+      const projection = trimmedSearch
+        ? { score: { $meta: "textScore" } }
+        : undefined;
+
+      let query = Product.find(filter, projection).populate("category", "name");
+
+      if (trimmedSearch) {
+        query = query.sort({ score: { $meta: "textScore" }, createdAt: -1 });
+      } else {
+        query = query.sort({ createdAt: -1 });
+      }
+
+      const products = await query;
 
       res.status(StatusCodes.OK).json({
         success: true,
