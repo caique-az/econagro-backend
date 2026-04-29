@@ -51,7 +51,7 @@ src/
 ├── server.js        # Entry point — connects DB, starts listening
 ├── config/          # env.js and mongodb.js
 ├── controllers/     # Class-based, exported as singleton instances
-├── middlewares/     # auth.js, errorHandler.js, validateObjectId.js
+├── middlewares/     # auth.js, errorHandler.js, validateObjectId.js, rateLimiters.js
 ├── models/          # Mongoose schemas (index.js re-exports all)
 ├── routes/          # Route definitions; index.js mounts all under /api
 └── utils/           # errors.js (custom error hierarchy), jwt.js
@@ -95,13 +95,28 @@ router.post('/', ...adminOnly, controller.create);
 
 Roles: `'user'` (default) and `'admin'`. Auth stays Bearer token — no cookie/httpOnly for now, so CORS does not need `credentials: true`.
 
+### Security middlewares
+
+`helmet` is applied globally in `app.js` before CORS, setting standard security headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, etc.).
+
+`express-rate-limit` is applied on sensitive routes via `src/middlewares/rateLimiters.js`:
+
+| Limiter | Routes | Limit |
+|---|---|---|
+| `authLimiter` | `POST /register`, `POST /login`, `POST /reset-password` | 20 req / 15 min |
+| `emailLimiter` | `POST /forgot-password`, `POST /contact` | 5 req / 1 hour |
+
+In `NODE_ENV=test` both limiters use `max: 1000` to avoid interfering with existing tests. Use `createAuthLimiter`/`createEmailLimiter` factory functions to create tight limiters for unit-style rate limit tests.
+
+The backend runs behind a proxy on Render; `app.set('trust proxy', 1)` is configured so that rate limiting reads the real client IP from `X-Forwarded-For`.
+
 ### Active/inactive visibility rules
 
 **Public endpoints** — always filter `active: true`, no query param can override this:
 
 - `GET /api/categories` — active categories only
 - `GET /api/categories/:id` — active category only
-- `GET /api/products` — active products in active categories only; `?active=false` is ignored
+- `GET /api/products` — active products in active categories only; `?active=false` is ignored; `?search=term` uses MongoDB `$text` index on `name` and `description`
 - `GET /api/products/:id` — active product in active category only; returns 404 otherwise
 - `GET /api/products/category/:categoryName` — active category, active products only
 - `GET /api/products?category=<id>` — validates ObjectId before querying; returns 400 for invalid ID
@@ -125,6 +140,8 @@ Factory — call as `validateObjectId()` (defaults to param `'id'`) or `validate
 ## Tests
 
 Tests use `mongodb-memory-server` — no external MongoDB needed. `tests/setup.js` sets `NODE_ENV=test` first, then creates an in-memory server before each suite and wipes all collections after each test.
+
+Product search tests call `await Product.syncIndexes()` in `beforeAll` to ensure the text index exists in the in-memory server before any `$text` query runs.
 
 Use helpers from `tests/helpers/auth.js`:
 ```js
