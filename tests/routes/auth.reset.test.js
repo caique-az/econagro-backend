@@ -88,6 +88,17 @@ describe("POST /api/auth/forgot-password", () => {
     );
   });
 
+  it("normalizes email before searching user", async () => {
+    await User.create(validUser);
+
+    const res = await request(app)
+      .post("/api/auth/forgot-password")
+      .send({ email: "  RESET@ECONAGRO.COM  " });
+
+    expect(res.status).toBe(200);
+    expect(emailService.sendPasswordResetEmail).toHaveBeenCalledTimes(1);
+  });
+
   it("clears token and returns 503 if email send fails", async () => {
     emailService.sendPasswordResetEmail.mockRejectedValue(
       new Error("SMTP error"),

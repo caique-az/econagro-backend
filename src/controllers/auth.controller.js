@@ -82,8 +82,10 @@ class AuthController {
   async forgotPassword(req, res, next) {
     try {
       const { email } = req.body;
+      const normalizedEmail =
+        typeof email === "string" ? email.trim().toLowerCase() : "";
 
-      if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      if (!normalizedEmail || !/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
         throw new BadRequestError("E-mail inválido ou não informado");
       }
 
@@ -93,7 +95,7 @@ class AuthController {
           "Se o e-mail estiver cadastrado, enviaremos instruções de recuperação.",
       };
 
-      const user = await User.findOne({ email });
+      const user = await User.findOne({ email: normalizedEmail });
       if (!user) {
         return res.status(StatusCodes.OK).json(genericResponse);
       }
