@@ -72,18 +72,23 @@ describe("POST /api/auth/forgot-password", () => {
     expect(user.passwordResetExpires.getTime()).toBeGreaterThan(Date.now());
   });
 
-  it("calls email service for existing user", async () => {
+  it("calls email service with correct to and resetUrl for existing user", async () => {
     await User.create(validUser);
     await request(app)
       .post("/api/auth/forgot-password")
       .send({ email: validUser.email });
     expect(emailService.sendPasswordResetEmail).toHaveBeenCalledTimes(1);
     expect(emailService.sendPasswordResetEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ to: validUser.email }),
+      expect.objectContaining({
+        to: validUser.email,
+        resetUrl: expect.stringMatching(
+          /^http:\/\/localhost:3000\/redefinir-senha\?token=/,
+        ),
+      }),
     );
   });
 
-  it("clears token if email send fails", async () => {
+  it("clears token and returns 503 if email send fails", async () => {
     emailService.sendPasswordResetEmail.mockRejectedValue(
       new Error("SMTP error"),
     );
@@ -93,7 +98,7 @@ describe("POST /api/auth/forgot-password", () => {
       .post("/api/auth/forgot-password")
       .send({ email: validUser.email });
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(503);
 
     const user = await User.findOne({ email: validUser.email }).select(
       "+passwordResetToken +passwordResetExpires",

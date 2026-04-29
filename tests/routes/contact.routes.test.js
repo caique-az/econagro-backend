@@ -23,12 +23,29 @@ describe("POST /api/contact", () => {
     expect(res.body.message).toMatch(/enviada com sucesso/i);
   });
 
-  it("calls email service with correct replyTo", async () => {
+  it("calls email service with normalized fields", async () => {
     await request(app).post("/api/contact").send(validPayload);
     expect(emailService.sendContactEmail).toHaveBeenCalledTimes(1);
-    expect(emailService.sendContactEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ email: validPayload.email }),
-    );
+    expect(emailService.sendContactEmail).toHaveBeenCalledWith({
+      name: "João Silva",
+      email: "joao@exemplo.com",
+      message: "Olá, gostaria de mais informações sobre os produtos.",
+    });
+  });
+
+  it("normalizes whitespace and uppercased email before sending", async () => {
+    await request(app)
+      .post("/api/contact")
+      .send({
+        name: "  João Silva  ",
+        email: "  JOAO@EXEMPLO.COM  ",
+        message: "  Olá, gostaria de mais informações sobre os produtos.  ",
+      });
+    expect(emailService.sendContactEmail).toHaveBeenCalledWith({
+      name: "João Silva",
+      email: "joao@exemplo.com",
+      message: "Olá, gostaria de mais informações sobre os produtos.",
+    });
   });
 
   it("returns 400 when name is missing", async () => {
@@ -71,10 +88,10 @@ describe("POST /api/contact", () => {
     expect(res.body.success).toBe(false);
   });
 
-  it("returns 400 when email service fails", async () => {
+  it("returns 503 when email service fails", async () => {
     emailService.sendContactEmail.mockRejectedValue(new Error("SMTP error"));
     const res = await request(app).post("/api/contact").send(validPayload);
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(503);
     expect(res.body.success).toBe(false);
   });
 });
