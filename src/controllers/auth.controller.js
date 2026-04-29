@@ -5,6 +5,7 @@ const {
   BadRequestError,
   UnauthorizedError,
   ValidationError,
+  ServiceUnavailableError,
 } = require("../utils/errors");
 const { signToken } = require("../utils/jwt");
 const emailService = require("../services/email.service");
@@ -111,11 +112,11 @@ class AuthController {
 
       try {
         await emailService.sendPasswordResetEmail({ to: user.email, resetUrl });
-      } catch (emailError) {
+      } catch (_emailError) {
         user.passwordResetToken = undefined;
         user.passwordResetExpires = undefined;
         await user.save({ validateBeforeSave: false });
-        throw new BadRequestError(
+        throw new ServiceUnavailableError(
           "Falha ao enviar e-mail. Tente novamente mais tarde.",
         );
       }
