@@ -39,11 +39,17 @@ class ContactController {
         throw new BadRequestError("Mensagem deve ter no máximo 5000 caracteres");
       }
 
-      await emailService.sendContactEmail({
-        name: name.trim(),
-        email,
-        message: message.trim(),
-      });
+      try {
+        await emailService.sendContactEmail({
+          name: name.trim(),
+          email,
+          message: message.trim(),
+        });
+      } catch (_emailError) {
+        throw new BadRequestError(
+          "Falha ao enviar mensagem. Tente novamente mais tarde.",
+        );
+      }
 
       return res.status(StatusCodes.OK).json({
         success: true,
