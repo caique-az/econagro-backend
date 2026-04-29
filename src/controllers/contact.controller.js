@@ -1,5 +1,5 @@
 const { StatusCodes } = require("http-status-codes");
-const { BadRequestError } = require("../utils/errors");
+const { BadRequestError, ServiceUnavailableError } = require("../utils/errors");
 const emailService = require("../services/email.service");
 
 class ContactController {
@@ -7,46 +7,47 @@ class ContactController {
     try {
       const { name, email, message } = req.body;
 
-      if (!name || typeof name !== "string" || name.trim().length < 3) {
+      const trimmedName = typeof name === "string" ? name.trim() : "";
+      const normalizedEmail =
+        typeof email === "string" ? email.trim().toLowerCase() : "";
+      const trimmedMessage = typeof message === "string" ? message.trim() : "";
+
+      if (!trimmedName || trimmedName.length < 3) {
         throw new BadRequestError(
           "Nome é obrigatório e deve ter pelo menos 3 caracteres",
         );
       }
 
-      if (name.trim().length > 100) {
+      if (trimmedName.length > 100) {
         throw new BadRequestError("Nome deve ter no máximo 100 caracteres");
       }
 
-      if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      if (!normalizedEmail || !/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
         throw new BadRequestError("E-mail inválido ou não informado");
       }
 
-      if (email.length > 254) {
+      if (normalizedEmail.length > 254) {
         throw new BadRequestError("E-mail deve ter no máximo 254 caracteres");
       }
 
-      if (
-        !message ||
-        typeof message !== "string" ||
-        message.trim().length < 10
-      ) {
+      if (!trimmedMessage || trimmedMessage.length < 10) {
         throw new BadRequestError(
           "Mensagem é obrigatória e deve ter pelo menos 10 caracteres",
         );
       }
 
-      if (message.trim().length > 5000) {
+      if (trimmedMessage.length > 5000) {
         throw new BadRequestError("Mensagem deve ter no máximo 5000 caracteres");
       }
 
       try {
         await emailService.sendContactEmail({
-          name: name.trim(),
-          email,
-          message: message.trim(),
+          name: trimmedName,
+          email: normalizedEmail,
+          message: trimmedMessage,
         });
       } catch (_emailError) {
-        throw new BadRequestError(
+        throw new ServiceUnavailableError(
           "Falha ao enviar mensagem. Tente novamente mais tarde.",
         );
       }
