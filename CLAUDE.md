@@ -25,7 +25,7 @@ npm run lint:fix     # ESLint auto-fix
 npm run seed:admin   # create first admin user from .env vars
 ```
 
-Run a single test file:
+Run a single test file: 
 ```bash
 npx jest tests/routes/category.routes.test.js
 ```
