@@ -11,7 +11,9 @@ const emailRequired = [
 
 function validateEnv() {
   const required =
-    process.env.NODE_ENV === "test" ? baseRequired : [...baseRequired, ...emailRequired];
+    process.env.NODE_ENV === "production"
+      ? [...baseRequired, ...emailRequired]
+      : baseRequired;
 
   const missing = required.filter((key) => !process.env[key]);
 
