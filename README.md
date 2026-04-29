@@ -276,7 +276,7 @@ Body:
 
 ```json
 {
-  "email": "caique@email.com",
+  "email": "seuemail@email.com",
   "password": "senha123"
 }
 ```
@@ -289,8 +289,8 @@ Resposta:
   "token": "jwt_token",
   "data": {
     "id": "user_id",
-    "name": "Caique Azevedo",
-    "email": "caique@email.com",
+    "name": "seu nome",
+    "email": "seuemail@email.com",
     "role": "user"
   }
 }

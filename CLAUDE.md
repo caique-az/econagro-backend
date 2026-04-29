@@ -25,7 +25,7 @@ npm run lint:fix     # ESLint auto-fix
 npm run seed:admin   # create first admin user from .env vars
 ```
 
-Run a single test file:
+Run a single test file: 
 ```bash
 npx jest tests/routes/category.routes.test.js
 ```
@@ -74,6 +74,7 @@ Throw errors from `src/utils/errors.js` — the global `errorHandler` middleware
 | `UnauthorizedError` | 401 |
 | `ForbiddenError` | 403 |
 | `BadRequestError` | 400 |
+| `ServiceUnavailableError` | 503 |
 
 Mongoose `ValidationError` and duplicate key errors (code 11000) are caught and re-thrown as the appropriate custom error class inside controllers before calling `next()`.
 
@@ -142,8 +143,6 @@ Minimum test criteria: lint passes, all tests pass, public routes do not expose 
 - **Frontend auth integration** — `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` contracts are stable and ready.
 - **Dynamic categories on frontend** — Category model has `name`, `image`, `active`, `order`; public listing ordered by `order` then `name`.
 - **Admin UI** — Admin routes exist and are protected; frontend panel not yet built.
-- **Password reset** — Requires token generation, secure storage, expiry, no email-existence leak, email sending.
-- **Contact form** — Decide on persistence vs. email, validate payload, prevent spam.
 - **Newsletter** — Decide on own backend vs. external service, dedup emails.
 - **Orders/checkout** — Out of scope entirely.
 - **Cookie httpOnly / CORS credentials** — Not until auth strategy changes.
@@ -175,6 +174,38 @@ Extends `airbnb-base` + `prettier`. Notable customizations:
 - `_id` is allowed in `no-underscore-dangle`
 - Unused args prefixed with `_` are allowed (Express error middleware needs the 4th arg)
 
+## Auth endpoints
+
+| Endpoint | Auth | Description |
+|---|---|---|
+| `POST /api/auth/register` | None | Register a new user |
+| `POST /api/auth/login` | None | Login and receive JWT |
+| `GET /api/auth/me` | Bearer | Return current user data |
+| `POST /api/auth/forgot-password` | None | Request password reset email |
+| `POST /api/auth/reset-password` | None | Reset password using token |
+
+### Password reset flow
+
+`forgot-password` always returns a generic 200 regardless of whether the email exists (no account enumeration). If the user exists, a random token is generated, its SHA-256 hash is stored in the DB (never the raw token), and an email is sent with a link to `${FRONTEND_URL}/redefinir-senha?token=<rawToken>`. The token expires in 30 minutes.
+
+`reset-password` receives `{ token, password }`, hashes the token, looks up the user, updates the password via `user.save()` (triggers bcrypt hook), and clears the reset fields. Reuse of the token is rejected.
+
+## Contact endpoint
+
+`POST /api/contact` — receives `{ name, email, message }`, validates, and sends an email to `CONTACT_TO_EMAIL` using `MAIL_FROM` as sender and the user's email as `replyTo`. No auth required.
+
+## Email service
+
+`src/services/email.service.js` wraps Nodemailer SMTP. Two exported functions:
+- `sendPasswordResetEmail({ to, resetUrl })`
+- `sendContactEmail({ name, email, message })`
+
+Controllers import and call the service; they never know SMTP details. In tests the module is mocked via `jest.mock`.
+
+All user-supplied values are HTML-escaped before being injected into email bodies. The `replyTo` field uses the raw (validated) email, not the escaped version. Line breaks in `message` are converted to `<br />`.
+
+Email provider failures return 503 (`ServiceUnavailableError`), not 400 — the payload was valid; the fault is on the infrastructure side.
+
 ## Environment variables
 
 Copy `.env.example` to `.env`.
@@ -187,3 +218,12 @@ Copy `.env.example` to `.env`.
 | `ALLOWED_ORIGINS` | Comma-separated CORS origins — no trailing `/api` |
 | `PORT` | Server port (default 3001) |
 | `SEED_ADMIN_*` | Used only by `npm run seed:admin` |
+| `FRONTEND_URL` | Base URL for password reset link (e.g. `https://econagro.vercel.app`) |
+| `MAIL_FROM` | Sender identity (e.g. `EconAgro <no-reply@econagro.com>`) |
+| `CONTACT_TO_EMAIL` | Recipient of contact form emails |
+| `SMTP_HOST` | SMTP server hostname |
+| `SMTP_PORT` | SMTP port (default 587) |
+| `SMTP_USER` | SMTP username |
+| `SMTP_PASS` | SMTP password |
+
+Email variables (`FRONTEND_URL`, `MAIL_FROM`, `CONTACT_TO_EMAIL`, `SMTP_*`) are required only in `NODE_ENV=production`. In development and test they are optional — the API starts without them, and email endpoints will fail gracefully (503) if called without SMTP configured.

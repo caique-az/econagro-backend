@@ -44,6 +44,12 @@ class BadRequestError extends ApiError {
   }
 }
 
+class ServiceUnavailableError extends ApiError {
+  constructor(message = 'Serviço indisponível') {
+    super(message, StatusCodes.SERVICE_UNAVAILABLE);
+  }
+}
+
 module.exports = {
   ApiError,
   NotFoundError,
@@ -51,4 +57,5 @@ module.exports = {
   UnauthorizedError,
   ForbiddenError,
   BadRequestError,
+  ServiceUnavailableError,
 };

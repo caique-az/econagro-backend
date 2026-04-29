@@ -1,5 +1,6 @@
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'test-secret';
+process.env.FRONTEND_URL = 'http://localhost:3000';
 
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const mongoose = require('mongoose');
