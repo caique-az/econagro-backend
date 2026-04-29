@@ -142,8 +142,6 @@ Minimum test criteria: lint passes, all tests pass, public routes do not expose 
 - **Frontend auth integration** — `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` contracts are stable and ready.
 - **Dynamic categories on frontend** — Category model has `name`, `image`, `active`, `order`; public listing ordered by `order` then `name`.
 - **Admin UI** — Admin routes exist and are protected; frontend panel not yet built.
-- **Password reset** — Requires token generation, secure storage, expiry, no email-existence leak, email sending.
-- **Contact form** — Decide on persistence vs. email, validate payload, prevent spam.
 - **Newsletter** — Decide on own backend vs. external service, dedup emails.
 - **Orders/checkout** — Out of scope entirely.
 - **Cookie httpOnly / CORS credentials** — Not until auth strategy changes.
@@ -175,6 +173,34 @@ Extends `airbnb-base` + `prettier`. Notable customizations:
 - `_id` is allowed in `no-underscore-dangle`
 - Unused args prefixed with `_` are allowed (Express error middleware needs the 4th arg)
 
+## Auth endpoints
+
+| Endpoint | Auth | Description |
+|---|---|---|
+| `POST /api/auth/register` | None | Register a new user |
+| `POST /api/auth/login` | None | Login and receive JWT |
+| `GET /api/auth/me` | Bearer | Return current user data |
+| `POST /api/auth/forgot-password` | None | Request password reset email |
+| `POST /api/auth/reset-password` | None | Reset password using token |
+
+### Password reset flow
+
+`forgot-password` always returns a generic 200 regardless of whether the email exists (no account enumeration). If the user exists, a random token is generated, its SHA-256 hash is stored in the DB (never the raw token), and an email is sent with a link to `${FRONTEND_URL}/redefinir-senha?token=<rawToken>`. The token expires in 30 minutes.
+
+`reset-password` receives `{ token, password }`, hashes the token, looks up the user, updates the password via `user.save()` (triggers bcrypt hook), and clears the reset fields. Reuse of the token is rejected.
+
+## Contact endpoint
+
+`POST /api/contact` — receives `{ name, email, message }`, validates, and sends an email to `CONTACT_TO_EMAIL` using `MAIL_FROM` as sender and the user's email as `replyTo`. No auth required.
+
+## Email service
+
+`src/services/email.service.js` wraps Nodemailer SMTP. Two exported functions:
+- `sendPasswordResetEmail({ to, resetUrl })`
+- `sendContactEmail({ name, email, message })`
+
+Controllers import and call the service; they never know SMTP details. In tests the module is mocked via `jest.mock`.
+
 ## Environment variables
 
 Copy `.env.example` to `.env`.
@@ -187,3 +213,12 @@ Copy `.env.example` to `.env`.
 | `ALLOWED_ORIGINS` | Comma-separated CORS origins — no trailing `/api` |
 | `PORT` | Server port (default 3001) |
 | `SEED_ADMIN_*` | Used only by `npm run seed:admin` |
+| `FRONTEND_URL` | Base URL for password reset link (e.g. `https://econagro.vercel.app`) |
+| `MAIL_FROM` | Sender identity (e.g. `EconAgro <no-reply@econagro.com>`) |
+| `CONTACT_TO_EMAIL` | Recipient of contact form emails |
+| `SMTP_HOST` | SMTP server hostname |
+| `SMTP_PORT` | SMTP port (default 587) |
+| `SMTP_USER` | SMTP username |
+| `SMTP_PASS` | SMTP password |
+
+Email variables are required in production; skipped in `NODE_ENV=test`.
