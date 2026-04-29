@@ -74,6 +74,7 @@ Throw errors from `src/utils/errors.js` — the global `errorHandler` middleware
 | `UnauthorizedError` | 401 |
 | `ForbiddenError` | 403 |
 | `BadRequestError` | 400 |
+| `ServiceUnavailableError` | 503 |
 
 Mongoose `ValidationError` and duplicate key errors (code 11000) are caught and re-thrown as the appropriate custom error class inside controllers before calling `next()`.
 
@@ -201,6 +202,10 @@ Extends `airbnb-base` + `prettier`. Notable customizations:
 
 Controllers import and call the service; they never know SMTP details. In tests the module is mocked via `jest.mock`.
 
+All user-supplied values are HTML-escaped before being injected into email bodies. The `replyTo` field uses the raw (validated) email, not the escaped version. Line breaks in `message` are converted to `<br />`.
+
+Email provider failures return 503 (`ServiceUnavailableError`), not 400 — the payload was valid; the fault is on the infrastructure side.
+
 ## Environment variables
 
 Copy `.env.example` to `.env`.
@@ -221,4 +226,4 @@ Copy `.env.example` to `.env`.
 | `SMTP_USER` | SMTP username |
 | `SMTP_PASS` | SMTP password |
 
-Email variables are required in production; skipped in `NODE_ENV=test`.
+Email variables (`FRONTEND_URL`, `MAIL_FROM`, `CONTACT_TO_EMAIL`, `SMTP_*`) are required only in `NODE_ENV=production`. In development and test they are optional — the API starts without them, and email endpoints will fail gracefully (503) if called without SMTP configured.
